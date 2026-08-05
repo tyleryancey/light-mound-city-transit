@@ -175,6 +175,11 @@ object IndexWriter {
         sections["calendar"] = calBuf.array()
         val cdBuf = ByteBuffer.allocate(feed.calendarDates.size * 6).order(ByteOrder.LITTLE_ENDIAN)
         for (cd in feed.calendarDates) {
+            // Python's struct.pack('<B') raises past 255; toByte() would
+            // truncate silently — refuse in lockstep (review finding, Phase 1d).
+            check(cd.exceptionType in 0..255) {
+                "calendar_dates exception_type ${cd.exceptionType} exceeds u8 — refusing to build"
+            }
             cdBuf.put(serviceIdx.getValue(cd.serviceId).toByte())
             cdBuf.put(cd.exceptionType.toByte())
             cdBuf.putInt(dateInt(cd.date))

@@ -55,8 +55,11 @@ object DepartureBoard {
         val rows = mutableListOf<BoardRow>()
         for (date in listOf(today.minusDays(1), today)) {
             val elapsedSeconds = now.epochSecond - ServiceDay.serviceDayStart(date, zone).epochSecond
-            val fromMinute = ((elapsedSeconds + 59) / 60).toInt()
-            if (fromMinute < 0) continue
+            // Negative elapsed is real: on the fall-back day the service day
+            // starts 01:00 local, so 00:00–01:00 queries precede it. Clamp to
+            // zero — every one of that day's trips is still ahead — rather than
+            // skipping the day (review finding, Phase 1d).
+            val fromMinute = ((elapsedSeconds + 59) / 60).toInt().coerceAtLeast(0)
             val services = index.activeServiceIdxs(date)
             for (d in index.departures(stop, fromMinute, services, limit)) {
                 val tripId = index.tripId(d.tripIdx)

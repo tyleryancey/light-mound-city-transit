@@ -97,6 +97,32 @@ class DepartureBoardTest {
     }
 
     @Test
+    fun fallBackEarlyMorningStillShowsTodaysTrips() {
+        // Review finding (Phase 1d): on 2026-11-01 the service day starts 01:00
+        // CDT, so a query at 00:30 CDT gives NEGATIVE elapsed for `today` — the
+        // old guard skipped today's leg entirely, hiding its early trips. The
+        // fixture's calendar ends in August, so this needs a synthetic one.
+        val files = mapOf(
+            "stops.txt" to "stop_id,stop_code,stop_name,stop_lat,stop_lon,wheelchair_boarding\n100,100,A,38.6,-90.2,1\n",
+            "routes.txt" to "route_id,route_short_name,route_long_name\nR1,70,Grand\n",
+            "trips.txt" to "route_id,service_id,trip_id,direction_id,trip_headsign,shape_id\nR1,S1,10,0,OUT,SH1\n",
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n10,02:00:00,02:00:00,100,1\n",
+            "calendar.txt" to "service_id,start_date,end_date,monday,tuesday,wednesday,thursday,friday,saturday,sunday\nS1,20261001,20261130,1,1,1,1,1,1,1\n",
+            "calendar_dates.txt" to "service_id,exception_type,date\n",
+            "shapes.txt" to "shape_id,shape_pt_sequence,shape_pt_lat,shape_pt_lon\nSH1,1,38.6,-90.2\nSH1,2,38.7,-90.2\n",
+        )
+        val feed = moundcity.transit.core.gtfs.GtfsFeed.load { name -> java.io.StringReader(files.getValue(name)) }
+        val idx = moundcity.transit.core.gtfs.ScheduleIndex(moundcity.transit.core.gtfs.IndexWriter.build(feed).container())
+        // 2026-11-01 00:30 CDT = 05:30Z; today's 02:00 departure exists (at 08:00Z)
+        val rows = DepartureBoard.at(idx, Instant.parse("2026-11-01T05:30:00Z"), chicago, idx.resolveStop(100)!!, limit = 4)
+        assertEquals(
+            listOf(120),
+            rows.filter { it.serviceDate == LocalDate.of(2026, 11, 1) }.map { it.minute },
+            "today's 02:00 trip must survive the negative-elapsed window before the DST-shifted service start",
+        )
+    }
+
+    @Test
     fun fromMinuteCeilsPartialMinutes() {
         // 11:49:12 must exclude a 11:49:00 departure (it left 12 s ago) — the
         // golden rail board's first row is 11:50, not 11:49.

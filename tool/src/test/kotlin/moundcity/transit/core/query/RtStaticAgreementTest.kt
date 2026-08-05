@@ -19,6 +19,22 @@ class RtStaticAgreementTest {
     private val serviceDate = LocalDate.of(2026, 8, 3)
 
     @Test
+    fun noRealtimeRecordOfAnyKindTouchesARailRoute() {
+        // 1.21's global half (review finding: only the single-stop golden
+        // existed). Every live trip, every cancellation, and every vehicle fix
+        // must resolve to a non-rail route — a re-captured fixture with partial
+        // rail RT should fail HERE, not slip through.
+        val index = QueryTestData.index
+        val rail = setOf("19731B", "19731R", "19870B", "19870R")
+        val rtTripIds = QueryTestData.rtTrips.entities.map { it.tripId.toInt() } +
+            QueryTestData.rtVehicles.fixes.map { it.tripId.toInt() }
+        val touched = rtTripIds.mapNotNull { index.tripIndexOf(it) }
+            .map { index.routeId(index.tripRoute(it)) }
+            .filter { it in rail }
+        assertEquals(emptyList(), touched, "zero realtime for MetroLink, across all 280 RT records (doc 01 §5d)")
+    }
+
+    @Test
     fun rawSampleCountMatchesDoc01() {
         val raw = QueryTestData.rtTrips.entities.filter { !it.canceled }
             .sumOf { e -> e.stus.count { it.delay != null && it.time != null } }

@@ -198,7 +198,9 @@ needed to run the tests.
       artifact, as it suspected. CLAUDE.md correction 10.*
 - [x] **1.21** Rail: assert zero realtime for `19731B/R` and `19870B/R`, and that
       every rail departure is emitted as `scheduled`. *Done 2026-08-05: rail board
-      rows all Scheduled with the full RT snapshot supplied; no vehicle attaches.*
+      rows all Scheduled with the full RT snapshot supplied; no vehicle attaches;
+      plus the global half from review — all 280 RT records (153 trip entities +
+      127 fixes) resolve to non-rail routes.*
 - [x] **1.22** MO/IL disambiguation: assert the eight colliding `route_short_name`s
       resolve to distinct routes and never render bare. *Done 2026-08-05,
       `core/query/RouteLabels.kt`: all 8 bus pairs render "N MO"/"N IL"; the
