@@ -173,6 +173,23 @@ class ScheduleIndex(container: ByteArray) {
         return (0 until serviceCount).filter { serviceId(it) in activeIds }.toSet()
     }
 
+    /** Min calendar start date — the "Schedule YYYY-MM-DD" the footer names. */
+    fun feedStartDate(): java.time.LocalDate =
+        (0 until serviceCount).mapNotNull { i ->
+            calendarBuf.getInt(i * 9).takeIf { it != 0 }?.let { intDate(it) }
+        }.min()
+
+    /** The 1.10 expiry rule, derived from the index's own sections. */
+    fun expiryDate(): java.time.LocalDate {
+        val ends = (0 until serviceCount).mapNotNull { i ->
+            calendarBuf.getInt(i * 9 + 4).takeIf { it != 0 }?.let { intDate(it) }
+        }
+        val exceptions = (0 until sections.getValue("calendar_dates").size / 6).map { j ->
+            intDate(calendarDatesBuf.getInt(j * 6 + 2))
+        }
+        return (ends + exceptions).max()
+    }
+
     private fun intDate(v: Int): java.time.LocalDate =
         java.time.LocalDate.of(v / 10000, (v / 100) % 100, v % 100)
 

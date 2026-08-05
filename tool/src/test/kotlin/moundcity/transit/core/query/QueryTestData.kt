@@ -17,4 +17,5 @@ object QueryTestData {
     }
     val rtTrips by lazy { RtDecoder.decodeTrips(FixturePaths.fixturesDir.resolve("StlRealTimeTrips.pb").readBytes()) }
     val rtVehicles by lazy { RtDecoder.decodeVehicles(FixturePaths.fixturesDir.resolve("StlRealTimeVehicles.pb").readBytes()) }
+    val rtAlerts by lazy { RtDecoder.decodeAlerts(FixturePaths.fixturesDir.resolve("StlRealTimeAlerts.pb").readBytes()) }
 }

@@ -30,13 +30,13 @@ class ApproachTest {
     fun oneStopBackCarriesDistance() {
         val e = est(targetSeq = 3, vLat = lat(1), vLon = lon(1)) as ApproachEstimate.StopsAway
         assertEquals(1, e.n, "vehicle at stop 2, target stop 3")
-        assertEquals("about 1 stop away · 0.7 mi", e.text(), "0.01° latitude spacing ≈ 0.69 mi")
+        assertEquals("about 1 stop away · 0.7 mi (straight line)", e.text(), "0.01° latitude spacing ≈ 0.69 mi; the straight-line words are load-bearing")
     }
 
     @Test
     fun atTargetReadsApproaching() {
         val e = est(targetSeq = 3, vLat = lat(2) - 2_000, vLon = lon(2))
-        assertEquals("approaching · 0.1 mi", (e as ApproachEstimate.Approaching).text(), "nearest is the target itself, 0.002° ≈ 0.14 mi short")
+        assertEquals("approaching · 0.1 mi (straight line)", (e as ApproachEstimate.Approaching).text(), "nearest is the target itself, 0.002° ≈ 0.14 mi short")
     }
 
     @Test
@@ -75,7 +75,7 @@ class ApproachTest {
         try {
             java.util.Locale.setDefault(java.util.Locale.GERMANY)
             val e = est(targetSeq = 3, vLat = lat(1), vLon = lon(1)) as ApproachEstimate.StopsAway
-            assertEquals("about 1 stop away · 0.7 mi", e.text(), "the decimal separator must not follow the device locale")
+            assertEquals("about 1 stop away · 0.7 mi (straight line)", e.text(), "the decimal separator must not follow the device locale")
         } finally {
             java.util.Locale.setDefault(prev)
         }

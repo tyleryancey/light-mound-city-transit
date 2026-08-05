@@ -7,12 +7,12 @@ sealed interface ApproachEstimate {
 
     data class StopsAway(val n: Int, val distanceMi: Double?) : ApproachEstimate {
         override fun text(): String =
-            if (n == 1) "about 1 stop away · ${"%.1f".format(java.util.Locale.US, distanceMi)} mi"
+            if (n == 1) "about 1 stop away · ${"%.1f".format(java.util.Locale.US, distanceMi)} mi (straight line)"
             else "about $n stops away"
     }
 
     data class Approaching(val distanceMi: Double) : ApproachEstimate {
-        override fun text(): String = "approaching · ${"%.1f".format(java.util.Locale.US, distanceMi)} mi"
+        override fun text(): String = "approaching · ${"%.1f".format(java.util.Locale.US, distanceMi)} mi (straight line)"
     }
 
     data object Passed : ApproachEstimate {
