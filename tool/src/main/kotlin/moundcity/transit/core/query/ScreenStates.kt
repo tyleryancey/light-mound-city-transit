@@ -112,7 +112,7 @@ object AlertMatch {
             Matched(
                 header = a.header,
                 description = a.description,
-                routeLabels = idxs.map { RouteLabels.displayShortName(index, it) },
+                routeLabels = idxs.map { RouteLabels.displayShortName(index, it) }.distinct(),
                 alert = a,
             )
         }

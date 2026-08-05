@@ -107,7 +107,7 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
                         primary = "direction ${dir + 1} of 2 — tap to switch",
                         secondary = state?.let { s ->
                             if (s.isRail) "scheduled — no live train positions"
-                            else s.liveLine?.let { "${s.vehicles.size} vehicles · $it" } ?: "no live data — refresh below"
+                            else s.liveLine?.let { "${s.vehicles.size} vehicle${if (s.vehicles.size == 1) "" else "s"} · $it" } ?: "no live data — refresh below"
                         },
                         onTap = { viewModel.toggleDirection() },
                     )
@@ -116,7 +116,7 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
                     val s = state
                     if (s?.shape != null) {
                         val stroke = LightThemeTokens.colors.content
-                        Canvas(modifier = Modifier.fillMaxWidth().height(420.dp)) {
+                        Canvas(modifier = Modifier.fillMaxWidth().height(280.dp)) {
                             val proj = moundcity.transit.core.query.ShapeProjection.fit(
                                 s.shape, size.width, size.height, pad = 24f,
                             )
