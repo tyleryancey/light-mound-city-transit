@@ -239,18 +239,32 @@ untestable until the 2026-08-31 pick and belong to M4/Phase 4.7. Still no UI.*
 
 ## Phase 2 — the tool shell
 
-- [ ] **2.1** `lighttool.toml`: locked `id`, `label`, `versionCode = 1`,
+- [x] **2.1** `lighttool.toml`: locked `id`, `label`, `versionCode = 1`,
       `versionName = "1.0.0"`, `permissions = ["android.permission.INTERNET",
-      "android.permission.ACCESS_NETWORK_STATE"]`, `serverPackage`.
-- [ ] **2.2** One `@InitialScreen`, one `@EntryPoint object : LightEntryPoint`.
-- [ ] **2.3** `assets/index.bin` from a captured snapshot, plus `assets/fares.json`,
+      "android.permission.ACCESS_NETWORK_STATE"]`, `serverPackage`. *Done
+      2026-08-05; CLAUDE.md block byte-synced.*
+- [x] **2.2** One `@InitialScreen`, one `@EntryPoint object : LightEntryPoint`.
+      *Done 2026-08-05: `ui/ToolEntryPoint.kt` + `ui/HomeScreen.kt` (shell content;
+      3.1 replaces it); sample package removed; KSP gates + scan green.*
+- [x] **2.3** `assets/index.bin` from a captured snapshot, plus `assets/fares.json`,
       `assets/holidays.json`, `assets/contacts.json` from `stl_bundle_*`, each
-      carrying a `capturedOn` date.
-- [ ] **2.4** DataStore: saved stops (≤12), refresh timestamps, active index name.
-- [ ] **2.5** Index loader: newest valid `filesDir` index, else the asset. Atomic
-      write, `fsync`, rename.
-- [ ] **2.6** `./gradlew :tool:assembleDebug` passes the plugin scan. Expect to trip
+      carrying a `capturedOn` date. *Done 2026-08-05: index.bin is the
+      manifest-anchored build (hash-pinned test); fares (as_of 2026-08-05, fresh
+      capture — the post-migration $1.00 bus / $2.50 rail table) and holidays-2026
+      (Labor Day: bus Sunday / rail Weekend, live confirmation of the M4 stakes)
+      byte-match the `stl_bundle_*` artifacts' own sha256s. **Known gap:** no
+      `stl_bundle_contacts` pipeline exists — contacts.json is assembled from doc
+      02 §3.6's 2026-08-04 planning capture and says so in its own `source` field.*
+- [x] **2.4** DataStore: saved stops (≤12), refresh timestamps, active index name.
+      *Done 2026-08-05, `data/Prefs.kt` over `datastore-preferences-core` (JVM-
+      tested): cap by refusal, plus the expiry-warning latch.*
+- [x] **2.5** Index loader: newest valid `filesDir` index, else the asset. Atomic
+      write, `fsync`, rename. *Done 2026-08-05, `data/IndexStore.kt`: corruption
+      skips, .tmp residue invisible, rename is the commit point.*
+- [x] **2.6** `./gradlew :tool:assembleDebug` passes the plugin scan. Expect to trip
       it once on a string literal or trailing comment — that is the scan working.
+      *Done 2026-08-05: clean (separate invocation) then assemble, green — and the
+      scan never tripped this phase; the constraint sheet paid for itself up front.*
 
 ---
 
