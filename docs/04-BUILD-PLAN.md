@@ -272,33 +272,51 @@ untestable until the 2026-08-31 pick and belong to M4/Phase 4.7. Still no UI.*
 
 Each renders a view model backed by `core`. No logic moves into `ui/`.
 
-- [ ] **3.1** Home: saved stops, entry, browse, alerts, reference. Data-age footer.
-- [ ] **3.2** Stop-number entry via `LightTextInputEditor` (full-screen; numeric
+- [x] **3.1** Home: saved stops, entry, browse, alerts, reference. Data-age footer.
+      *Done 2026-08-05; driven on the physical LP3 — saved stop shows its next
+      departure; footer on every screen.*
+- [x] **3.2** Stop-number entry via `LightTextInputEditor` (full-screen; numeric
       keyboard). Clone `examples/weather`. Unknown number → a plain "no stop with
-      that number", never a crash.
-- [ ] **3.3** Departures. Bounded at 8. Weight-and-glyph distinction for live vs
-      scheduled. Manual refresh only.
-- [ ] **3.4** Trip detail: remaining stops to terminus; **"about N stops back"
+      that number", never a crash. *Done 2026-08-05. **SDK limitation recorded:**
+      the Light keyboard exposes no numeric-first mode at pin `9aed6ff` — riders
+      tap "123". Upstream-worthy.*
+- [x] **3.3** Departures. Bounded at 8. Weight-and-glyph distinction for live vs
+      scheduled. Manual refresh only. *Done 2026-08-05: ●/○/✕ markers, doc 02
+      status strings verbatim, canceled lightened (LightText has no
+      strikethrough); driven live on hardware at 10624.*
+- [x] **3.4** Trip detail: remaining stops to terminus; **"about N stops back"
       (1.24) replaces the straight-line distance**, which rides along (in miles)
-      only when N ≤ 1; vehicle id and fix age.
-- [ ] **3.5** Browse: 38 rail stations, 45 transit centers, 62 routes grouped
-      MO / IL / Rail.
-- [ ] **3.6** Alerts: filtered to saved-stop routes by default, full description on
-      detail. No `url`. Active period shown as `Effective from …`.
-- [ ] **3.7** Reference: fares, payment, accessibility, contacts, services — each
+      only when N ≤ 1; vehicle id and fix age. *Done 2026-08-05; the
+      "(straight line)" words ride with every distance per doc 02.*
+- [x] **3.5** Browse: 38 rail stations, 45 transit centers, 62 routes grouped
+      MO / IL / Rail. *Done 2026-08-05: 30 merged centers with platform counts
+      (12 multi, Civic ×5); collision markers live on device ("13 IL" vs bare
+      "14"); rail as two lines.*
+- [x] **3.6** Alerts: filtered to saved-stop routes by default, full description on
+      detail. No `url`. Active period shown as `Effective from …`. *Done
+      2026-08-05: live fetch on the LP3's own network returned the real current
+      alerts, filtered to the saved rail stop.*
+- [x] **3.7** Reference: fares, payment, accessibility, contacts, services — each
       with its capture date. Tappable or read-only per M6 (settled: read-only).
       *Fares card = `fares.json` rows + curated copy per doc 02 §3.6's 2026-08-05
-      decision — never hand-edit the byte-pinned asset.*
-- [ ] **3.8** Data-age states: fresh / expiring (≤7 days) / **expired replaces the
-      list**. Live data ages to `scheduled` at 15 minutes.
-- [ ] **3.9** Monochrome audit: grep for `Color(` in `ui/`. Zero hits.
-- [ ] **3.10** Process-death test: kill and relaunch on every screen; each rebuilds
+      decision — never hand-edit the byte-pinned asset. Done 2026-08-05.*
+- [x] **3.8** Data-age states: fresh / expiring (≤7 days) / **expired replaces the
+      list**. Live data ages to `scheduled` at 15 minutes. *Done 2026-08-05:
+      DataAge TDD'd; the 15-minute aging observed live on device.*
+- [x] **3.9** Monochrome audit: grep for `Color(` in `ui/`. Zero hits. *Done
+      2026-08-05: zero raw constructors; theme tokens only, Canvas included.*
+- [x] **3.10** Process-death test: kill and relaunch on every screen; each rebuilds
       from DataStore + index. The back stack and view models are in-memory only.
-- [ ] **3.11** Schematic route viewer (D12): Browse → route → Canvas polyline +
+      *Done 2026-08-05 on hardware: force-stop → relaunch rebuilds Home from
+      DataStore (saved stop + next time intact).*
+- [x] **3.11** Schematic route viewer (D12): Browse → route → Canvas polyline +
       stops (hollow circles) + vehicle dots (filled glyphs), direction toggle,
       fit-to-screen only. Bus: vehicles from last manual refresh, fix age, 30 s
       floor. Rail: static, "scheduled — no live train positions". Monochrome;
-      no user location; expiry replaces the screen (D9).
+      no user location; expiry replaces the screen (D9). *Done 2026-08-05:
+      driven on hardware with a live vehicle dot; one layout bug found and fixed
+      (the 420dp canvas clipped at the fold, visually severing the route —
+      projection math proven contiguous off-device first).*
 
 ---
 
