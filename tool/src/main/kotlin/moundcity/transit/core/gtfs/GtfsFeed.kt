@@ -23,7 +23,10 @@ data class Trip(
     val serviceId: String,
     val directionId: Int,
     val headsign: String,
+    val shapeId: String,
 )
+
+data class ShapePoint(val lat: Double, val lon: Double)
 
 /**
  * The parsed static feed, with the build-refusing assertions of build plan 1.6
@@ -41,6 +44,7 @@ class GtfsFeed private constructor(
     val serviceIds: List<String>,
     val calendar: List<CalendarRow>,
     val calendarDates: List<CalendarDateRow>,
+    val shapes: Map<String, List<ShapePoint>>,
     val expiry: LocalDate,
     val stMinute: IntArray,
     val stTripIdx: IntArray,
@@ -93,6 +97,7 @@ class GtfsFeed private constructor(
                             serviceId = row["service_id"],
                             directionId = row["direction_id"].toInt(),
                             headsign = row["trip_headsign"],
+                            shapeId = row["shape_id"],
                         )
                     )
                 }
@@ -168,6 +173,23 @@ class GtfsFeed private constructor(
                 }
             }
 
+            val shapeAccum = HashMap<String, MutableList<Pair<Int, ShapePoint>>>()
+            openEntry("shapes.txt").use { r ->
+                GtfsCsv.forEachRow(r) { row ->
+                    shapeAccum.getOrPut(row["shape_id"]) { mutableListOf() }.add(
+                        row["shape_pt_sequence"].toInt() to
+                            ShapePoint(row["shape_pt_lat"].toDouble(), row["shape_pt_lon"].toDouble())
+                    )
+                }
+            }
+            val shapes = shapeAccum.mapValues { (_, v) -> v.sortedBy { it.first }.map { it.second } }
+            val unshaped = trips.groupBy { it.routeId to it.directionId }
+                .filterValues { group -> group.none { it.shapeId.isNotEmpty() } }
+            check(unshaped.isEmpty()) {
+                "A15: ${unshaped.size} route+direction pair(s) with no shaped trip " +
+                    "(first: ${unshaped.keys.first().first}) — the route viewer cannot draw them"
+            }
+
             return GtfsFeed(
                 stops = stops,
                 routes = routes,
@@ -175,6 +197,7 @@ class GtfsFeed private constructor(
                 serviceIds = trips.map { it.serviceId }.distinct().sorted(),
                 calendar = calendar,
                 calendarDates = calendarDates,
+                shapes = shapes,
                 expiry = FeedExpiry.expiryDate(calendar.map { it.endDate }, calendarDates.map { it.date }),
                 stMinute = minute,
                 stTripIdx = tripIdx,

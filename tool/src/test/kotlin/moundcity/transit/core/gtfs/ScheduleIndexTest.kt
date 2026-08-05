@@ -100,10 +100,11 @@ class ScheduleIndexTest {
         val files = mapOf(
             "stops.txt" to "stop_id,stop_code,stop_name,stop_lat,stop_lon,wheelchair_boarding\n100,100,A,38.6,-90.2,1\n",
             "routes.txt" to "route_id,route_short_name,route_long_name\nR1,1,Main\n",
-            "trips.txt" to "route_id,service_id,trip_id,direction_id,trip_headsign\nR1,S1,10,0,OUT\n",
+            "trips.txt" to "route_id,service_id,trip_id,direction_id,trip_headsign,shape_id\nR1,S1,10,0,OUT,SH1\n",
             "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n10,08:00:00,08:00:00,100,70000\n",
             "calendar.txt" to "service_id,start_date,end_date,monday,tuesday,wednesday,thursday,friday,saturday,sunday\nS1,20260730,20260830,1,1,1,1,1,0,0\n",
             "calendar_dates.txt" to "service_id,exception_type,date\n",
+            "shapes.txt" to "shape_id,shape_pt_sequence,shape_pt_lat,shape_pt_lon\nSH1,1,38.6,-90.2\nSH1,2,38.7,-90.2\n",
         )
         val feed = GtfsFeed.load { name -> StringReader(files.getValue(name)) }
         val e = assertFailsWith<IllegalStateException> { IndexWriter.build(feed) }
@@ -118,10 +119,11 @@ class ScheduleIndexTest {
         val files = mapOf(
             "stops.txt" to "stop_id,stop_code,stop_name,stop_lat,stop_lon,wheelchair_boarding\n100,100,A,38.6,-90.2,1\n",
             "routes.txt" to "route_id,route_short_name,route_long_name\nR1,1,Main\n",
-            "trips.txt" to "route_id,service_id,trip_id,direction_id,trip_headsign\nR1,S1,20,0,OUT\nR1,S1,10,0,BACK\n",
+            "trips.txt" to "route_id,service_id,trip_id,direction_id,trip_headsign,shape_id\nR1,S1,20,0,OUT,SH1\nR1,S1,10,0,BACK,SH1\n",
             "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n20,08:00:00,08:00:00,100,1\n10,09:00:00,09:00:00,100,1\n",
             "calendar.txt" to "service_id,start_date,end_date,monday,tuesday,wednesday,thursday,friday,saturday,sunday\nS1,20260730,20260830,1,1,1,1,1,0,0\n",
             "calendar_dates.txt" to "service_id,exception_type,date\n",
+            "shapes.txt" to "shape_id,shape_pt_sequence,shape_pt_lat,shape_pt_lon\nSH1,1,38.6,-90.2\nSH1,2,38.7,-90.2\n",
         )
         val feed = GtfsFeed.load { name -> StringReader(files.getValue(name)) }
         val e = assertFailsWith<IllegalStateException> { IndexWriter.build(feed) }
