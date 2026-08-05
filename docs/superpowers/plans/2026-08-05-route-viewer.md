@@ -360,7 +360,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `ShapeSelect.representatives(feed, routeIdxById)` from Task 3.
-- Produces: `IndexContainer.VERSION = 2`; `SECTION_ORDER` ending `…, "wheelchair", "shape_keys", "shape_offsets", "shape_pts"`; `ScheduleIndex.routeShape(routeIdx: Int, directionId: Int): IntArray?` returning interleaved `[latMicro0, lonMicro0, latMicro1, …]` or null when the pair is absent.
+- Produces: `IndexContainer.VERSION = 3`; `SECTION_ORDER` ending `…, "calendar_dates", "shape_keys", "shape_offsets", "shape_pts"`; `ScheduleIndex.routeShape(routeIdx: Int, directionId: Int): IntArray?` returning interleaved `[latMicro0, lonMicro0, latMicro1, …]` or null when the pair is absent.
 
 - [ ] **Step 1: Write the failing tests.** In `IndexWriterTest.kt`, the manifest tests already compare *whatever* sections exist — they will fail against the OLD manifest once the writer changes, and pass after re-anchoring; that is the RED→GREEN cycle for this task. Add to `ScheduleIndexTest.kt`:
 
@@ -381,7 +381,7 @@ fun routeShapeAbsentPairIsNull() {
 ```
 
 - [ ] **Step 2: Run to verify failure.** `routeShape` unresolved.
-- [ ] **Step 3: Kotlin writer.** In `IndexContainer`: `VERSION = 2`; append `"shape_keys", "shape_offsets", "shape_pts"` to `SECTION_ORDER`. In `IndexWriter.build`, after the `wheelchair` section:
+- [ ] **Step 3: Kotlin writer.** In `IndexContainer`: `VERSION = 3`; append `"shape_keys", "shape_offsets", "shape_pts"` to `SECTION_ORDER`. In `IndexWriter.build`, after the `wheelchair` section:
 
 ```kotlin
 val reps = ShapeSelect.representatives(feed, routeIdx)
@@ -476,7 +476,7 @@ parts['shape_offsets'] = soff_blob
 parts['shape_pts'] = pts_blob
 ```
 
-And the container line becomes version 2: `container = b"MCT1" + struct.pack("<II", 2, len(payloads))`. Also update Kotlin's `check(buf.int == VERSION)` — it already reads the constant.
+And the container line becomes version 3: `container = b"MCT1" + struct.pack("<II", 3, len(payloads))`. Also update Kotlin's `check(buf.int == VERSION)` — it already reads the constant.
 
 - [ ] **Step 6: Regenerate the anchor and run everything.**
 
@@ -485,7 +485,7 @@ cd harness && python3 build_index.py fixtures --write && cd ..
 export JAVA_HOME=$(/usr/libexec/java_home -v 17) && ./gradlew :tool:testDebugUnitTest
 ```
 
-Expected: manifest now lists 13 sections + index.bin; ALL tests green including `everySectionMatchesThePythonManifestByteForByte` — if `shape_pts` hashes differ, the two DP transcriptions diverged; diff the section byte lengths first (a length match with hash mismatch means float-order divergence; a length mismatch means keep/drop divergence).
+Expected: manifest now lists 17 sections + index.bin; ALL tests green including `everySectionMatchesThePythonManifestByteForByte` — if `shape_pts` hashes differ, the two DP transcriptions diverged; diff the section byte lengths first (a length match with hash mismatch means float-order divergence; a length mismatch means keep/drop divergence).
 
 - [ ] **Step 7: Record the measured v2 size.** Read the new `index.bin` bytes from the manifest; update the CLAUDE.md sizing line and doc 04's risk row placeholder (`~3.32 MB` → the measured number).
 - [ ] **Step 8: Commit (everything together — the same-commit rule).**

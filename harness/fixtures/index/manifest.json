@@ -1,4 +1,12 @@
 {
+  "calendar": {
+    "bytes": 72,
+    "sha256": "db373c8c7070443c6d265da569c05ade0f1bdd82593681f2339a432fe59985a1"
+  },
+  "calendar_dates": {
+    "bytes": 12,
+    "sha256": "4216d0ead53d103d668ddac3c95d9aad7958661044d27fe6916128ce79fc664d"
+  },
   "departures": {
     "bytes": 2934066,
     "sha256": "966cd75c89a3015cae1f066a13d087ea2d49e38f3dfe75909845280bf6d58c65"
@@ -8,12 +16,20 @@
     "sha256": "94bdb5a8492ed4f1fd84b9122e2595d16fea3f150f7378b11ac584f97ffc960a"
   },
   "index.bin": {
-    "bytes": 3254989,
-    "sha256": "cec5621e1a3c9f3c4e2c9fc9a64e8d9f1b9f3653225a40958bb9cb9b2ae86326"
+    "bytes": 3255739,
+    "sha256": "f9991801b80718cdb2bb560bd11ffaaa8025a72a0afcedf24a04e22951afc535"
+  },
+  "route_ids": {
+    "bytes": 566,
+    "sha256": "468e7e5ccba32d3280c5034856b20d0cea1a3f1d150a51d86d2b890b92cc974a"
   },
   "route_names": {
     "bytes": 1182,
     "sha256": "d11abfec3ef85ad8f5641cf69f94fcd71db93b35cb95a2349ecd828afc7c23c9"
+  },
+  "service_ids": {
+    "bytes": 84,
+    "sha256": "ebfe30fed71bdfeb5b255eea61edda627d0982afe7979084f9dd57bd51980e55"
   },
   "stop_codes": {
     "bytes": 20472,
