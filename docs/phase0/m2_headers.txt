@@ -1,0 +1,49 @@
+=== R1: plain GET ===
+HTTP/2 200 
+date: Wed, 05 Aug 2026 17:09:45 GMT
+content-type: application/octet-stream
+content-length: 202426
+server: cloudflare
+vary: accept-encoding
+accept-ranges: bytes
+last-modified: Wed, 05 Aug 2026 17:09:39 GMT
+set-cookie: __cf_bm=Th22SYldUcIAmDk.WqqffQTS9eilFdAbHrcNeULSvIg-1785949785.5993025-1.0.1.1-Zr7i3FTexZCBFe54u8sR701wbLf8b0cP0hymA2JBAxFcBw8RoaLsFX627uyU.0IevgrrNPZpT9SvP0AQCoGyG.rhngGYmiAdszH86KSQ9mHxxg9ohug3QKWpd4ukKOr5; HttpOnly; SameSite=None; Secure; Path=/; Domain=www.metrostlouis.org; Expires=Wed, 05 Aug 2026 17:39:45 GMT
+x-pass-why: custom-path
+cf-cache-status: BYPASS
+cf-ray: a267694ffd5b54d0-STL
+alt-svc: h3=":443"; ma=86400
+
+R1 body bytes: 202426
+
+=== R2: Accept-Encoding: gzip ===
+HTTP/2 200 
+date: Wed, 05 Aug 2026 17:09:46 GMT
+content-type: application/octet-stream
+content-length: 202426
+server: cloudflare
+vary: accept-encoding
+accept-ranges: bytes
+last-modified: Wed, 05 Aug 2026 17:09:39 GMT
+set-cookie: __cf_bm=QDZwELXvIx3sjTbZtjw0zy5q0gpjmie7MCkT9pbKlmU-1785949785.9073002-1.0.1.1-rR.NZQ0psXU2DbLOUB4TL.vcHq2mh66QIZUG.hUJXwJwLthiNa5dhx88j90Xr2i0nv9JB2HVOgQ8zqcVCEnFPMDzG3e2Vr87icmiwD4aNte_iKLEgrQt9Om6_WCNUTY3; HttpOnly; SameSite=None; Secure; Path=/; Domain=www.metrostlouis.org; Expires=Wed, 05 Aug 2026 17:39:46 GMT
+x-pass-why: custom-path
+cf-cache-status: BYPASS
+cf-ray: a2676951ed8dda1a-STL
+alt-svc: h3=":443"; ma=86400
+
+R2 body bytes: 202426
+=== R3: If-Modified-Since: Wed, 05 Aug 2026 17:09:39 GMT ===
+HTTP/2 304 
+date: Wed, 05 Aug 2026 17:10:08 GMT
+server: cloudflare
+vary: accept-encoding
+last-modified: Wed, 05 Aug 2026 17:09:39 GMT
+set-cookie: __cf_bm=O.jaWVZxXJsFxK5Zy1kRD9xo1Hxh695hRgn6lJvdafk-1785949807.9291742-1.0.1.1-cnNifuz26FrafzzOXaV6ExRa._vi40So3Alu10SXjxZxx8cVlKx3nmxLW4rA.ePS_nmmXv9m1d0xMRDlR3IZuL93D33MWLpavkybkanm49BeFJ9NCt69uREegJYDAg4L; HttpOnly; SameSite=None; Secure; Path=/; Domain=www.metrostlouis.org; Expires=Wed, 05 Aug 2026 17:40:08 GMT
+x-pass-why: custom-path
+cf-cache-status: BYPASS
+cf-ray: a26769db8b32f39e-STL
+alt-svc: h3=":443"; ma=86400
+
+R3 body bytes: 
+
+=== R4 (bonus): If-None-Match with quoted bogus etag ===
+200

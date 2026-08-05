@@ -1,0 +1,25 @@
+errors/skipped: 1
+
+=== trips ===
+samples: 180  span: 1790 s
+distinct header_ts values: 55
+deltas between distinct values (s): n=54
+  modal (top 5): [(21, 16), (43, 13), (42, 11), (22, 9), (44, 1)]
+  p50: 42  p90: 43  min: 21  max: 48
+staleness at fetch (s): p50 27  p90 42  max 51
+
+=== vehicles ===
+samples: 180  span: 1790 s
+distinct header_ts values: 55
+deltas between distinct values (s): n=54
+  modal (top 5): [(43, 14), (21, 14), (42, 12), (22, 9), (26, 2)]
+  p50: 42  p90: 43  min: 21  max: 45
+staleness at fetch (s): p50 26  p90 42  max 52
+
+=== alerts ===
+samples: 179  span: 1790 s
+distinct header_ts values: 30
+deltas between distinct values (s): n=29
+  modal (top 5): [(60, 25), (61, 4)]
+  p50: 60  p90: 61  min: 60  max: 61
+staleness at fetch (s): p50 44  p90 73  max 84
