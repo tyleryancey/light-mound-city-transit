@@ -171,7 +171,11 @@ needed to run the tests.
 - [x] **1.17** Truncation: every prefix of each `.pb` either decodes or throws
       cleanly. Never a half-applied snapshot. *Done 2026-08-05: vehicles + alerts
       exhaustive, trips strided (97) with exhaustive 2 KB edges; only
-      `RtDecodeException` ever thrown; counters prove both paths exercised.*
+      `RtDecodeException` ever thrown; counters prove both paths exercised. Branch
+      review added three adversarial guards, fixed test-first: overflow-safe
+      length checks (a 2^63-adjacent varint had walked the cursor backward),
+      wire-type-guarded dispatch (mismatches skip as unknown, per canonical
+      protobuf), and no fabricated fixes for vehicle-less entities.*
 
 ### 1d — the join
 - [ ] **1.18** `merge(index, rtSnapshot)` → `List<Departure>` with live/scheduled,
