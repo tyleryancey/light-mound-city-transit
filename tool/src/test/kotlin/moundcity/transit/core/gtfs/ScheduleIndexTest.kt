@@ -93,6 +93,23 @@ class ScheduleIndexTest {
     }
 
     @Test
+    fun routeShapeReturnsDecimatedPolylineForRealRoute() {
+        val stop = index.resolveStop(10624)!!
+        val first = index.departures(stop, 11 * 60 + 50, weekday, limit = 1).single()
+        val shape = index.routeShape(index.tripRoute(first.tripIdx), index.tripDirection(first.tripIdx))
+        assertTrue(shape != null && shape.size >= 4 && shape.size % 2 == 0, "an interleaved lat/lon polyline exists for the Blue Line")
+        assertTrue(
+            shape!!.toList().chunked(2).all { (la, lo) -> la in 38_000_000..39_000_000 && lo in -91_000_000..-89_000_000 },
+            "points are St. Louis microdegrees",
+        )
+    }
+
+    @Test
+    fun routeShapeAbsentPairIsNull() {
+        assertNull(index.routeShape(200, 0), "a route index past the table returns null, not garbage")
+    }
+
+    @Test
     fun writerRefusesStopSequencePastU16() {
         // Python's struct.pack('<H') refuses seq > 65535; the packed-long sort here
         // would instead mask it and silently corrupt ordering AND trip attribution.

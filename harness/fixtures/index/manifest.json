@@ -16,8 +16,8 @@
     "sha256": "94bdb5a8492ed4f1fd84b9122e2595d16fea3f150f7378b11ac584f97ffc960a"
   },
   "index.bin": {
-    "bytes": 3255739,
-    "sha256": "f9991801b80718cdb2bb560bd11ffaaa8025a72a0afcedf24a04e22951afc535"
+    "bytes": 3315307,
+    "sha256": "b5be97b1f3e1e2677a952236f6d1872d914ecfccf0cf7d0c4caeb61745327a92"
   },
   "route_ids": {
     "bytes": 566,
@@ -30,6 +30,18 @@
   "service_ids": {
     "bytes": 84,
     "sha256": "ebfe30fed71bdfeb5b255eea61edda627d0982afe7979084f9dd57bd51980e55"
+  },
+  "shape_keys": {
+    "bytes": 240,
+    "sha256": "82a2d401dc57eaf0a1c6915ff367701fb37855dcb28c156b8363b99d65a1472e"
+  },
+  "shape_offsets": {
+    "bytes": 484,
+    "sha256": "d9baa0411978aaa1a521d8baa316ae0b4e306a6c20afb6df769eb214fe80cbd0"
+  },
+  "shape_pts": {
+    "bytes": 58832,
+    "sha256": "32133aa644f05ee4e87cb51cc1594a6302ad569c65db2eacccca940151f6ef8c"
   },
   "stop_codes": {
     "bytes": 20472,

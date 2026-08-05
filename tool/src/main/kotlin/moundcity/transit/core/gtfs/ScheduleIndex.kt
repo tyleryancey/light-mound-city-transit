@@ -174,6 +174,26 @@ class ScheduleIndex(container: ByteArray) {
     private fun intDate(v: Int): java.time.LocalDate =
         java.time.LocalDate.of(v / 10000, (v / 100) % 100, v % 100)
 
+    // --- v3: route shapes (D12) ---
+
+    private val shapeOffsets = buf("shape_offsets")
+    private val shapePts = buf("shape_pts")
+
+    /** Interleaved [latMicro0, lonMicro0, latMicro1, ...] or null when absent. */
+    fun routeShape(routeIdx: Int, directionId: Int): IntArray? {
+        val keys = sections.getValue("shape_keys")
+        for (i in 0 until keys.size / 2) {
+            if ((keys[i * 2].toInt() and 0xFF) == routeIdx && (keys[i * 2 + 1].toInt() and 0xFF) == directionId) {
+                val start = shapeOffsets.getInt(i * 4)
+                val end = shapeOffsets.getInt((i + 1) * 4)
+                val out = IntArray((end - start) / 4)
+                for (j in out.indices) out[j] = shapePts.getInt(start + j * 4)
+                return out
+            }
+        }
+        return null
+    }
+
     // --- strings ---
 
     fun headsign(headsignIdx: Int): String = headsigns[headsignIdx]
