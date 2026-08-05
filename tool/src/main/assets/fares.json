@@ -1,0 +1,109 @@
+{
+  "as_of": "2026-08-05",
+  "currency": "USD",
+  "fares": [
+    {
+      "category": "Metro Fare Details",
+      "id": "metro_fare_details_30_day_pass",
+      "label": "30-Day Pass",
+      "mode": "",
+      "notes": "Mode: Bus / Rail",
+      "price": "$78.00",
+      "price_as_published": "78.00",
+      "price_cents": 7800
+    },
+    {
+      "category": "Metro Fare Details",
+      "id": "metro_fare_details_30_day_pass_reduced_fare",
+      "label": "30-Day Pass (Reduced Fare)*",
+      "mode": "",
+      "notes": "Mode: Bus / Rail",
+      "price": "$39.00",
+      "price_as_published": "39.00",
+      "price_cents": 3900
+    },
+    {
+      "category": "Metro Fare Details",
+      "id": "metro_fare_details_7_day_pass",
+      "label": "7-Day Pass",
+      "mode": "",
+      "notes": "Mode: Bus / Rail",
+      "price": "$27.00",
+      "price_as_published": "27.00",
+      "price_cents": 2700
+    },
+    {
+      "category": "Metro Fare Details",
+      "id": "metro_fare_details_cash_reduced_fare",
+      "label": "Cash (Reduced Fare)*",
+      "mode": "",
+      "notes": "Mode: Bus",
+      "price": "$0.50",
+      "price_as_published": "0.50",
+      "price_cents": 50
+    },
+    {
+      "category": "Metro Fare Details",
+      "id": "metro_fare_details_cash_reduced_fare_2",
+      "label": "Cash (Reduced Fare)*",
+      "mode": "",
+      "notes": "Mode: Rail",
+      "price": "$1.25",
+      "price_as_published": "1.25",
+      "price_cents": 125
+    },
+    {
+      "category": "Metro Fare Details",
+      "id": "metro_fare_details_cash_base_fare",
+      "label": "Cash Base Fare",
+      "mode": "",
+      "notes": "Mode: Bus",
+      "price": "$1.00",
+      "price_as_published": "1.00",
+      "price_cents": 100
+    },
+    {
+      "category": "Metro Fare Details",
+      "id": "metro_fare_details_cash_base_fare_2",
+      "label": "Cash Base Fare",
+      "mode": "",
+      "notes": "Mode: Rail",
+      "price": "$2.50",
+      "price_as_published": "2.50",
+      "price_cents": 250
+    },
+    {
+      "category": "Metro Fare Details",
+      "id": "metro_fare_details_metro_call_a_ride_ada",
+      "label": "Metro Call-A-Ride/ADA**",
+      "mode": "",
+      "notes": "Mode: Call‑A‑Ride",
+      "price": "$2.00",
+      "price_as_published": "2.00",
+      "price_cents": 200
+    },
+    {
+      "category": "Metro Fare Details",
+      "id": "metro_fare_details_one_day_pass",
+      "label": "One-Day Pass",
+      "mode": "",
+      "notes": "Mode: Bus / Rail",
+      "price": "$5.00",
+      "price_as_published": "5.00",
+      "price_cents": 500
+    },
+    {
+      "category": "Metro Fare Details",
+      "id": "metro_fare_details_university_semester_pass",
+      "label": "University Semester Pass",
+      "mode": "",
+      "notes": "Mode: Bus / Rail",
+      "price": "$175.00",
+      "price_as_published": "175.00",
+      "price_cents": 17500
+    }
+  ],
+  "generated_by": "stl 0.1.0",
+  "note": "price_cents is authoritative. `price` is rendered from it, and any consumer that re-parses the string instead of reading the integer has reintroduced the floating-point bug this format exists to avoid.",
+  "source_url": "https://www.metrostlouis.org/fares-and-passes/"
+}

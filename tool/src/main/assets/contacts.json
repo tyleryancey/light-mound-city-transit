@@ -1,0 +1,42 @@
+{
+  "capturedOn": "2026-08-04",
+  "contacts": [
+    {
+      "hours": "Mon-Fri 7-6; automated next-arrival line 24/7",
+      "label": "Transit Information",
+      "phone": "314-231-2345"
+    },
+    {
+      "hours": "",
+      "label": "Customer Service",
+      "phone": "314-982-1406"
+    },
+    {
+      "hours": "24/7",
+      "label": "Metro Public Safety",
+      "phone": "314-289-6873"
+    },
+    {
+      "hours": "",
+      "label": "ADA Services",
+      "phone": "314-982-1510"
+    },
+    {
+      "hours": "7:30-5 daily",
+      "label": "Call-A-Ride reservations",
+      "phone": "314-982-1505"
+    },
+    {
+      "hours": "hours vary - call",
+      "label": "Via",
+      "phone": "636-251-3328"
+    },
+    {
+      "hours": "",
+      "label": "Relay Missouri",
+      "phone": "711"
+    }
+  ],
+  "note": "Read-only by design: no LightServiceMethod dials (M6, verified at SDK pin 9aed6ff). Typeset for reading aloud and hand-copying.",
+  "source": "doc 02 §3.6 planning capture of metrostlouis.org (no automated stl_bundle_contacts pipeline exists; recorded as a known gap in build plan 2.3)"
+}
