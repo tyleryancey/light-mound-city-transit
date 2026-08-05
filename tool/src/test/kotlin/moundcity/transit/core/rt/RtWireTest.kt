@@ -65,6 +65,19 @@ class RtWireTest {
     }
 
     @Test
+    fun overflowLengthNearLongMaxThrowsInsteadOfWalkingBackward() {
+        // Review finding (Phase 1c): a 9-byte varint encoding 2^63−10 makes
+        // pos + len overflow Long to MIN_VALUE when pos == 10, slipping the old
+        // guard; len.toInt() is −10, so the cursor moved BACKWARD and the outer
+        // loop re-read the same tag forever (alerts: hard hang; vehicles: OOM).
+        val evil = hex("00000000000000000000" + "f6ffffffffffffff7f")
+        val w = RtWire(evil, 10, evil.size)
+        assertFailsWith<RtDecodeException>("len = 2^63−10 at pos 10 must throw, not rewind the cursor") {
+            w.readLengthDelimited()
+        }
+    }
+
+    @Test
     fun lengthDelimitedRunningPastEndThrows() {
         assertFailsWith<RtDecodeException>("declared length past the buffer is truncation, not data") {
             RtWire(hex("05aabb")).skip(2)

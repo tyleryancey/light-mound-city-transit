@@ -57,6 +57,41 @@ class RtRobustnessTest {
     }
 
     @Test
+    fun wireTypeMismatchIsSkippedAsUnknownNotMisparsed() {
+        // Review finding (Phase 1c): dispatch was field-number-only. A delay
+        // (STE field 1, varint) arriving length-delimited had its LENGTH byte
+        // read as the value — delay = 5 from garbage. Canonical protobuf (and
+        // the oracle's library) treats a wire-type mismatch as an unknown
+        // field: skip by the ACTUAL wire type.
+        val bogusSte = lenField(1, ByteArray(5) { 0x08 })             // delay sent as bytes, not varint
+        val stu = lenField(3, bogusSte) + strField(4, "10624")
+        val tripUpdate = lenField(1, strField(1, "3407211")) + lenField(2, stu)
+        val entity = strField(1, "e1") + lenField(3, tripUpdate)
+        val header = strField(1, "2.0") + field(3, 0, varint(1_785_775_752))
+        val feed = lenField(1, header) + lenField(2, entity)
+
+        val decoded = RtDecoder.decodeTrips(feed)
+        assertEquals(
+            mapOf(3407211 to null),
+            decoded.delayByTrip(),
+            "the mismatched delay is an unknown field, so the trip reads as on-time — never delay=5-from-a-length-byte",
+        )
+    }
+
+    @Test
+    fun entityWithoutVehiclePayloadIsSkippedAndTripsTheShapeTripwire() {
+        // Review finding (Phase 1c): decodeVehicles fabricated a (0,0) fix with
+        // an empty tripId for an entity with no vehicle field. Skip it, and
+        // record the anomaly on the existing forbidden-fields channel so the
+        // fixture test absentFieldsStayAbsent trips the day the feed changes.
+        val header = strField(1, "2.0") + field(3, 0, varint(1_785_775_752))
+        val feed = lenField(1, header) + lenField(2, strField(1, "e1"))
+        val decoded = RtDecoder.decodeVehicles(feed)
+        assertEquals(emptyList(), decoded.fixes, "no phantom (0,0) fix")
+        assertEquals(setOf("entity_without_vehicle"), decoded.forbiddenFieldsSeen, "the anomaly is recorded, not invented into data")
+    }
+
+    @Test
     fun everyPrefixOfEveryFixtureDecodesOrThrowsCleanly() {
         var throws = 0
         var successes = 0

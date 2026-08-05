@@ -49,7 +49,12 @@ class RtWire(private val bytes: ByteArray, private var pos: Int, private val end
     /** Returns a sub-reader over a length-delimited payload and advances past it. */
     fun readLengthDelimited(): RtWire {
         val len = readVarint()
-        if (len < 0 || pos + len > end) {
+        // Compare against the REMAINING count, never pos + len: a 9-byte varint
+        // near 2^63 overflows pos + len to negative, slips a > check, and its
+        // low 32 bits walk the cursor BACKWARD — an infinite loop (review
+        // finding, Phase 1c). The len < 0 arm stays: bit-63 varints are
+        // negative and would slip a remaining-count check the same way.
+        if (len < 0 || len > (end - pos).toLong()) {
             throw RtDecodeException("length-delimited field of $len bytes overruns the buffer at byte $pos")
         }
         val sub = RtWire(bytes, pos, pos + len.toInt())

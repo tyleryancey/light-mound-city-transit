@@ -42,7 +42,9 @@ data class RtVehicle(
 data class RtVehicles(
     val headerTimestamp: Long,
     val fixes: List<RtVehicle>,
-    /** Fields the feed has never sent; a name appearing here means it started (task 1.14). */
+    /** Shape anomalies: field names the feed has never sent, plus
+     * "entity_without_vehicle". A name appearing here means the feed changed
+     * shape (task 1.14) — the fixture test asserts this set is empty. */
     val forbiddenFieldsSeen: Set<String>,
 )
 
@@ -62,10 +64,29 @@ data class RtAlerts(val headerTimestamp: Long, val alerts: List<RtAlert>)
  * Hand-rolled GTFS-RT decoder (decision D4): the 12 fields this feed actually
  * uses, everything else skipped by wire type. Field numbers mirror
  * harness/gtfsrt.py — the oracle these decodes are verified against.
+ *
+ * Dispatch is guarded by wire type as well as field number (review finding,
+ * Phase 1c): a known field number arriving with the wrong wire type is treated
+ * as an unknown field and skipped by its ACTUAL type — canonical protobuf
+ * behavior, matching the oracle's library — never misparsed into data.
  */
 object RtDecoder {
 
     private const val SR_CANCELED = 3
+
+    // --- wire-type-guarded reads: mismatch → skip as unknown, return null ---
+
+    private fun lenOrSkip(w: RtWire, tag: Int): RtWire? =
+        if (tag and 7 == 2) w.readLengthDelimited() else { w.skip(tag and 7); null }
+
+    private fun varintOrSkip(w: RtWire, tag: Int): Long? =
+        if (tag and 7 == 0) w.readVarint() else { w.skip(tag and 7); null }
+
+    private fun stringOrSkip(w: RtWire, tag: Int): String? =
+        if (tag and 7 == 2) w.readString() else { w.skip(tag and 7); null }
+
+    private fun floatOrSkip(w: RtWire, tag: Int): Float? =
+        if (tag and 7 == 5) w.readFloat() else { w.skip(tag and 7); null }
 
     fun decodeTrips(bytes: ByteArray): RtTrips {
         var headerTs = 0L
@@ -78,13 +99,12 @@ object RtDecoder {
                 while (entity.hasMore()) {
                     val tag = entity.readTag()
                     when (tag ushr 3) {
-                        3 -> { // trip_update
-                            val tu = entity.readLengthDelimited()
+                        3 -> lenOrSkip(entity, tag)?.let { tu ->
                             while (tu.hasMore()) {
                                 val t2 = tu.readTag()
                                 when (t2 ushr 3) {
-                                    1 -> trip = readTripDescriptor(tu.readLengthDelimited())
-                                    2 -> stus.add(readStu(tu.readLengthDelimited()))
+                                    1 -> lenOrSkip(tu, t2)?.let { trip = readTripDescriptor(it) }
+                                    2 -> lenOrSkip(tu, t2)?.let { stus.add(readStu(it)) }
                                     else -> tu.skip(t2 and 7)
                                 }
                             }
@@ -106,6 +126,7 @@ object RtDecoder {
         forEachTopLevel(bytes,
             onHeader = { headerTs = it },
             onEntity = { entity ->
+                var sawVehicle = false
                 var tripId = ""
                 var lat = 0.0f
                 var lon = 0.0f
@@ -115,19 +136,18 @@ object RtDecoder {
                 while (entity.hasMore()) {
                     val tag = entity.readTag()
                     when (tag ushr 3) {
-                        4 -> { // vehicle (VehiclePosition)
-                            val vp = entity.readLengthDelimited()
+                        4 -> lenOrSkip(entity, tag)?.let { vp ->
+                            sawVehicle = true
                             while (vp.hasMore()) {
                                 val t2 = vp.readTag()
                                 when (t2 ushr 3) {
-                                    1 -> tripId = readTripDescriptor(vp.readLengthDelimited()).first
-                                    2 -> { // Position
-                                        val p = vp.readLengthDelimited()
+                                    1 -> lenOrSkip(vp, t2)?.let { tripId = readTripDescriptor(it).first }
+                                    2 -> lenOrSkip(vp, t2)?.let { p ->
                                         while (p.hasMore()) {
                                             val t3 = p.readTag()
                                             when (t3 ushr 3) {
-                                                1 -> lat = p.readFloat()
-                                                2 -> lon = p.readFloat()
+                                                1 -> floatOrSkip(p, t3)?.let { lat = it }
+                                                2 -> floatOrSkip(p, t3)?.let { lon = it }
                                                 3 -> { forbidden.add("bearing"); p.skip(t3 and 7) }
                                                 4 -> { forbidden.add("odometer"); p.skip(t3 and 7) }
                                                 5 -> { forbidden.add("speed"); p.skip(t3 and 7) }
@@ -137,15 +157,14 @@ object RtDecoder {
                                     }
                                     3 -> { forbidden.add("current_stop_sequence"); vp.skip(t2 and 7) }
                                     4 -> { forbidden.add("current_status"); vp.skip(t2 and 7) }
-                                    5 -> ts = vp.readVarint()
+                                    5 -> varintOrSkip(vp, t2)?.let { ts = it }
                                     7 -> { forbidden.add("stop_id"); vp.skip(t2 and 7) }
-                                    8 -> { // VehicleDescriptor
-                                        val vd = vp.readLengthDelimited()
+                                    8 -> lenOrSkip(vp, t2)?.let { vd ->
                                         while (vd.hasMore()) {
                                             val t3 = vd.readTag()
                                             when (t3 ushr 3) {
-                                                1 -> vehId = vd.readString()
-                                                2 -> label = vd.readString()
+                                                1 -> stringOrSkip(vd, t3)?.let { vehId = it }
+                                                2 -> stringOrSkip(vd, t3)?.let { label = it }
                                                 else -> vd.skip(t3 and 7)
                                             }
                                         }
@@ -157,16 +176,20 @@ object RtDecoder {
                         else -> entity.skip(tag and 7)
                     }
                 }
-                fixes.add(
-                    RtVehicle(
-                        tripId = tripId,
-                        latMicro = (lat.toDouble() * 1e6).toInt(),
-                        lonMicro = (lon.toDouble() * 1e6).toInt(),
-                        timestamp = ts,
-                        vehicleId = vehId,
-                        label = label,
+                if (sawVehicle) {
+                    fixes.add(
+                        RtVehicle(
+                            tripId = tripId,
+                            latMicro = (lat.toDouble() * 1e6).toInt(),
+                            lonMicro = (lon.toDouble() * 1e6).toInt(),
+                            timestamp = ts,
+                            vehicleId = vehId,
+                            label = label,
+                        )
                     )
-                )
+                } else {
+                    forbidden.add("entity_without_vehicle")
+                }
             })
         return RtVehicles(headerTs, fixes, forbidden)
     }
@@ -180,8 +203,7 @@ object RtDecoder {
                 while (entity.hasMore()) {
                     val tag = entity.readTag()
                     when (tag ushr 3) {
-                        5 -> { // alert
-                            val a = entity.readLengthDelimited()
+                        5 -> lenOrSkip(entity, tag)?.let { a ->
                             val periods = mutableListOf<Pair<Long, Long?>>()
                             val routeIds = mutableListOf<String>()
                             val stopIds = mutableListOf<String>()
@@ -192,35 +214,33 @@ object RtDecoder {
                             while (a.hasMore()) {
                                 val t2 = a.readTag()
                                 when (t2 ushr 3) {
-                                    1 -> { // TimeRange
-                                        val tr = a.readLengthDelimited()
+                                    1 -> lenOrSkip(a, t2)?.let { tr ->
                                         var start = 0L
                                         var end: Long? = null
                                         while (tr.hasMore()) {
                                             val t3 = tr.readTag()
                                             when (t3 ushr 3) {
-                                                1 -> start = tr.readVarint()
-                                                2 -> end = tr.readVarint()
+                                                1 -> varintOrSkip(tr, t3)?.let { start = it }
+                                                2 -> varintOrSkip(tr, t3)?.let { end = it }
                                                 else -> tr.skip(t3 and 7)
                                             }
                                         }
                                         periods.add(start to end)
                                     }
-                                    5 -> { // EntitySelector
-                                        val sel = a.readLengthDelimited()
+                                    5 -> lenOrSkip(a, t2)?.let { sel ->
                                         while (sel.hasMore()) {
                                             val t3 = sel.readTag()
                                             when (t3 ushr 3) {
-                                                2 -> routeIds.add(sel.readString())
-                                                5 -> stopIds.add(sel.readString())
+                                                2 -> stringOrSkip(sel, t3)?.let { routeIds.add(it) }
+                                                5 -> stringOrSkip(sel, t3)?.let { stopIds.add(it) }
                                                 else -> sel.skip(t3 and 7)
                                             }
                                         }
                                     }
-                                    6 -> cause = a.readVarint().toInt()
+                                    6 -> varintOrSkip(a, t2)?.let { cause = it.toInt() }
                                     7 -> { effectSeen = true; a.skip(t2 and 7) }
-                                    10 -> header = readTranslatedString(a.readLengthDelimited())
-                                    11 -> description = readTranslatedString(a.readLengthDelimited())
+                                    10 -> lenOrSkip(a, t2)?.let { header = readTranslatedString(it) }
+                                    11 -> lenOrSkip(a, t2)?.let { description = readTranslatedString(it) }
                                     else -> a.skip(t2 and 7)
                                 }
                             }
@@ -240,17 +260,16 @@ object RtDecoder {
         while (w.hasMore()) {
             val tag = w.readTag()
             when (tag ushr 3) {
-                1 -> { // FeedHeader
-                    val h = w.readLengthDelimited()
+                1 -> lenOrSkip(w, tag)?.let { h ->
                     while (h.hasMore()) {
                         val t2 = h.readTag()
                         when (t2 ushr 3) {
-                            3 -> onHeader(h.readVarint())
+                            3 -> varintOrSkip(h, t2)?.let { onHeader(it) }
                             else -> h.skip(t2 and 7)
                         }
                     }
                 }
-                2 -> onEntity(w.readLengthDelimited())
+                2 -> lenOrSkip(w, tag)?.let { onEntity(it) }
                 else -> w.skip(tag and 7)
             }
         }
@@ -263,8 +282,8 @@ object RtDecoder {
         while (td.hasMore()) {
             val tag = td.readTag()
             when (tag ushr 3) {
-                1 -> tripId = td.readString()
-                4 -> canceled = td.readVarint().toInt() == SR_CANCELED
+                1 -> stringOrSkip(td, tag)?.let { tripId = it }
+                4 -> varintOrSkip(td, tag)?.let { canceled = it.toInt() == SR_CANCELED }
                 else -> td.skip(tag and 7)
             }
         }
@@ -277,12 +296,11 @@ object RtDecoder {
         while (ts.hasMore()) {
             val tag = ts.readTag()
             when (tag ushr 3) {
-                1 -> { // Translation
-                    val tr = ts.readLengthDelimited()
+                1 -> lenOrSkip(ts, tag)?.let { tr ->
                     while (tr.hasMore()) {
                         val t2 = tr.readTag()
                         when (t2 ushr 3) {
-                            1 -> if (text.isEmpty()) text = tr.readString() else tr.skip(t2 and 7)
+                            1 -> stringOrSkip(tr, t2)?.let { if (text.isEmpty()) text = it }
                             else -> tr.skip(t2 and 7)
                         }
                     }
@@ -300,18 +318,17 @@ object RtDecoder {
         while (stu.hasMore()) {
             val tag = stu.readTag()
             when (tag ushr 3) {
-                3 -> { // departure StopTimeEvent
-                    val ste = stu.readLengthDelimited()
+                3 -> lenOrSkip(stu, tag)?.let { ste ->
                     while (ste.hasMore()) {
                         val t2 = ste.readTag()
                         when (t2 ushr 3) {
-                            1 -> delay = ste.readVarint().toInt()
-                            2 -> time = ste.readVarint()
+                            1 -> varintOrSkip(ste, t2)?.let { delay = it.toInt() }
+                            2 -> varintOrSkip(ste, t2)?.let { time = it }
                             else -> ste.skip(t2 and 7)
                         }
                     }
                 }
-                4 -> stopId = stu.readString()
+                4 -> stringOrSkip(stu, tag)?.let { stopId = it }
                 else -> stu.skip(tag and 7)
             }
         }
