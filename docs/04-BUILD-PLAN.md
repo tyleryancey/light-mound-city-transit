@@ -146,21 +146,32 @@ needed to run the tests.
       data throws.*
 
 ### 1c — realtime
-- [ ] **1.11** Varint / wire reader with the six fixtures from doc 01 §5b. Case one
-      is `-300` = `d4fdffffffffffffff01`.
-- [ ] **1.12** Decode `StlRealTimeTrips.pb` → `Map<TripId, Int?>` + canceled set.
-      Assert 153 entities, 127 with updates, 26 canceled.
-- [ ] **1.13** Adjacent-duplicate dedup. Assert 20 of 127 trips are affected and that
-      dedup reproduces the scheduled sequence.
-- [ ] **1.14** Decode `StlRealTimeVehicles.pb` → 127 fixes. Assert `bearing`,
+- [x] **1.11** Varint / wire reader with the six fixtures from doc 01 §5b. Case one
+      is `-300` = `d4fdffffffffffffff01`. *Done 2026-08-05, `core/rt/RtWire.kt`:
+      all six vectors + the unsigned-misread counter-assertion (18446744073709551316);
+      groups, overlong varints, and every truncation throw `RtDecodeException`.*
+- [x] **1.12** Decode `StlRealTimeTrips.pb` → `Map<TripId, Int?>` + canceled set.
+      Assert 153 entities, 127 with updates, 26 canceled. *Done 2026-08-05: exact;
+      17 on-time (null delay); trip 3407211 at +180 s; delays within −300…+1200 s.*
+- [x] **1.13** Adjacent-duplicate dedup. Assert 20 of 127 trips are affected and that
+      dedup reproduces the scheduled sequence. *Done 2026-08-05: all 20 deduped
+      sequences equal their `ScheduleIndex.tripStops` stop lists — RT×static
+      cross-check.*
+- [x] **1.14** Decode `StlRealTimeVehicles.pb` → 127 fixes. Assert `bearing`,
       `speed`, `stop_id`, `current_stop_sequence` are all absent — a future feed that
-      starts sending them should trip a test, not go unnoticed.
-- [ ] **1.15** Decode `StlRealTimeAlerts.pb` → 24 alerts, 27 informed entities,
-      `effect` unset on all 24.
-- [ ] **1.16** Unknown-field tolerance: synthesise a feed with an extension field in
-      1000–1999 and assert it is skipped, not thrown.
-- [ ] **1.17** Truncation: every prefix of each `.pb` either decodes or throws
-      cleanly. Never a half-applied snapshot.
+      starts sending them should trip a test, not go unnoticed. *Done 2026-08-05:
+      forbidden-field tripwire empty (also covers `odometer`, `current_status`);
+      labels ≤42 chars; golden vehicle for trip 3407211 at (38734340, −90354400).*
+- [x] **1.15** Decode `StlRealTimeAlerts.pb` → 24 alerts, 27 informed entities,
+      `effect` unset on all 24. *Done 2026-08-05: exact, incl. 2 stop_id selectors;
+      header 21 s behind Trips/Vehicles.*
+- [x] **1.16** Unknown-field tolerance: synthesise a feed with an extension field in
+      1000–1999 and assert it is skipped, not thrown. *Done 2026-08-05: extensions
+      at three nesting levels (1500 in STU, 1001 in TripUpdate, 1999 top-level).*
+- [x] **1.17** Truncation: every prefix of each `.pb` either decodes or throws
+      cleanly. Never a half-applied snapshot. *Done 2026-08-05: vehicles + alerts
+      exhaustive, trips strided (97) with exhaustive 2 KB edges; only
+      `RtDecodeException` ever thrown; counters prove both paths exercised.*
 
 ### 1d — the join
 - [ ] **1.18** `merge(index, rtSnapshot)` → `List<Departure>` with live/scheduled,
