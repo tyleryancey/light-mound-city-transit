@@ -17,16 +17,14 @@ start of Phase 1.
 id            = "moundcity.transit"
 label         = "Mound City Transit"
 versionCode   = 1
-versionName   = "0.1.0"
-permissions   = []
+versionName   = "1.0.0"
+permissions   = ["android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE"]
 serverPackage = "com.lightos"
 # serverPackage = "com.thelightphone.sdk.emulator"
 ```
 
-(Byte-matches `tool/lighttool.toml`. Phase 2.1 raises `versionName` to `1.0.0` and
-sets `permissions = ["android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE"]`
-when the network layer exists — never ship `[]`, see doc 03. Keep this block in sync
-with the real file on every change.)
+(Byte-matches `tool/lighttool.toml`; Phase 2.1 executed 2026-08-05 — the final
+identity. Keep this block in sync with the real file on every change.)
 
 **Status:** **Phase 0 complete (2026-08-05)** — 0.1–0.9 done, 0.3 consciously skipped
 per its own optional-if-D4-stands terms. SDK pinned at `9aed6ff`; M1/M2/M6 measured;
