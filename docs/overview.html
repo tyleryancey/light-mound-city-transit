@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STL Departures — findings &amp; plan</title>
+<style>
+  :root{
+    --bg:#0d0d0e; --panel:#151517; --line:#2a2a2e;
+    --ink:#f2f2f0; --dim:#9a9a96; --dimmer:#67676a;
+    --hi:#f2f2f0; --warn:#e8c07a; --bad:#e08b7a; --good:#8fbf9f;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    font-size:16px; line-height:1.55; -webkit-font-smoothing:antialiased;
+    padding:0 0 5rem;
+  }
+  .wrap{max-width:820px;margin:0 auto;padding:0 1.25rem}
+  header{padding:3.5rem 0 2.25rem;border-bottom:1px solid var(--line);margin-bottom:2.5rem}
+  h1{font-size:1.9rem;line-height:1.15;margin:0 0 .6rem;letter-spacing:-.02em;font-weight:600}
+  .sub{color:var(--dim);font-size:1.02rem;margin:0 0 1.1rem;max-width:56ch}
+  .meta{font-family:var(--mono);font-size:.74rem;color:var(--dimmer);letter-spacing:.04em;text-transform:uppercase}
+  h2{font-size:.76rem;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;
+     color:var(--dimmer);margin:3.25rem 0 1.1rem;font-weight:500;
+     padding-bottom:.5rem;border-bottom:1px solid var(--line)}
+  h3{font-size:1.02rem;margin:0 0 .4rem;font-weight:600;letter-spacing:-.01em}
+  p{margin:0 0 .85rem}
+  .lede{color:var(--dim);font-size:.94rem}
+
+  /* stat strip */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;
+         background:var(--line);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+  .stat{background:var(--panel);padding:1rem .95rem}
+  .stat .n{font-family:var(--mono);font-size:1.35rem;font-weight:600;letter-spacing:-.02em;display:block}
+  .stat .l{font-size:.76rem;color:var(--dim);margin-top:.2rem;line-height:1.35}
+
+  /* finding cards */
+  .find{border:1px solid var(--line);border-radius:3px;background:var(--panel);
+        padding:1.15rem 1.15rem 1rem;margin-bottom:.85rem;position:relative}
+  .find .tag{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
+             color:var(--dimmer);display:block;margin-bottom:.45rem}
+  .find p{font-size:.9rem;color:var(--dim);margin-bottom:.5rem}
+  .find p:last-child{margin-bottom:0}
+  .find .so{font-size:.9rem;color:var(--ink);border-left:2px solid var(--dimmer);
+            padding-left:.75rem;margin-top:.7rem}
+  .find.alarm{border-color:#4a3a2a}
+  .find.alarm .tag{color:var(--warn)}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:.86rem;margin:.4rem 0 1rem}
+  th{text-align:left;font-family:var(--mono);font-size:.68rem;letter-spacing:.09em;
+     text-transform:uppercase;color:var(--dimmer);font-weight:500;
+     padding:.45rem .6rem .45rem 0;border-bottom:1px solid var(--line)}
+  td{padding:.5rem .6rem .5rem 0;border-bottom:1px solid var(--line);vertical-align:top;color:var(--dim)}
+  td:first-child{color:var(--ink)}
+  td.num,th.num{font-family:var(--mono);text-align:right;padding-right:0}
+  tr:last-child td{border-bottom:none}
+
+  /* in / out lists */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+  @media(max-width:620px){.cols{grid-template-columns:1fr;gap:1.75rem}}
+  ul.mark{list-style:none;padding:0;margin:0;font-size:.88rem}
+  ul.mark li{padding:.3rem 0 .3rem 1.4rem;position:relative;color:var(--dim);line-height:1.45}
+  ul.mark li b{color:var(--ink);font-weight:600}
+  ul.mark li:before{position:absolute;left:0;font-family:var(--mono);font-size:.8rem}
+  ul.in li:before{content:"+";color:var(--good)}
+  ul.out li:before{content:"\2212";color:var(--bad)}
+
+  /* screen mock */
+  .mock{border:1px solid var(--line);border-radius:3px;background:#000;
+        font-family:var(--mono);font-size:.78rem;line-height:1.65;padding:1rem 1.1rem;
+        color:var(--ink);white-space:pre;overflow-x:auto;margin:.5rem 0 1rem}
+  .mock .d{color:var(--dimmer)}
+
+  /* phases */
+  .ph{display:flex;gap:1rem;padding:.85rem 0;border-bottom:1px solid var(--line);align-items:baseline}
+  .ph:last-child{border-bottom:none}
+  .ph .k{font-family:var(--mono);font-size:.72rem;color:var(--dimmer);
+         min-width:4.5rem;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
+  .ph .v b{display:block;font-size:.94rem;margin-bottom:.15rem}
+  .ph .v span{font-size:.85rem;color:var(--dim)}
+
+  code{font-family:var(--mono);font-size:.86em;background:#1e1e21;padding:.1em .35em;
+       border-radius:2px;color:var(--ink)}
+  .find code,td code{background:#202024}
+  footer{margin-top:3.5rem;padding-top:1.5rem;border-top:1px solid var(--line);
+         font-size:.8rem;color:var(--dimmer)}
+  a{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>STL&nbsp;Departures</h1>
+  <p class="sub">A stop-centric departure board for St.&nbsp;Louis transit on the Light Phone&nbsp;3.
+  You type the number on the sign; it tells you what is coming. Findings, scope, and build plan.</p>
+  <p class="meta">Verified 2026-08-04 · GTFS 2026-07-30 · realtime 2026-08-03 11:49 CDT</p>
+</header>
+
+<h2>The feed, measured</h2>
+<div class="stats">
+  <div class="stat"><span class="n">5,118</span><span class="l">stops — every one numbered on its sign</span></div>
+  <div class="stat"><span class="n">62</span><span class="l">routes · 58 bus, 4 rail rows for 2 lines</span></div>
+  <div class="stat"><span class="n">489,011</span><span class="l">stop times</span></div>
+  <div class="stat"><span class="n">3.25 MB</span><span class="l">on-device index, built and measured</span></div>
+  <div class="stat"><span class="n">0.013 ms</span><span class="l">per departures query, in Python</span></div>
+  <div class="stat"><span class="n">26 days</span><span class="l">until the schedule expires</span></div>
+</div>
+
+<h2>Six findings that changed the design</h2>
+
+<div class="find">
+  <span class="tag">Finding 01 · input</span>
+  <h3>The number on the sign <em>is</em> the <code>stop_id</code></h3>
+  <p><code>stop_code == stop_id</code> on all 5,118 stops. Unique, numeric, 3–5 digits, range 127–16549.</p>
+  <p class="so">The SDK exposes no usable location API, so typing a stop number is the entire input UX — and it
+  resolves in one integer lookup with no indirection table. The constraint and the data fit each other exactly.
+  <br><br>Note: <b>not</b> uniformly five digits. A five-digit input mask would reject 57% of the system.</p>
+</div>
+
+<div class="find alarm">
+  <span class="tag">Finding 02 · the big one</span>
+  <h3>The 207 KB TripUpdates feed carries 1,071 bytes of information</h3>
+  <p><code>delay</code> is <b>constant across every stop of a trip</b> — 127 of 127 trips have exactly one
+  distinct value. And <code>predicted == scheduled + delay</code> held on <b>8,450 of 8,453</b> samples.</p>
+  <p class="so">The whole feed reduces, without loss, to 153 records of
+  <code>{trip_id, delay, canceled}</code>. Parse and discard: never store a StopTimeUpdate.
+  A serialization library would materialise 9,536 objects to throw them away.</p>
+</div>
+
+<div class="find alarm">
+  <span class="tag">Finding 03 · scope</span>
+  <h3>There is no realtime for MetroLink. None.</h3>
+  <p>Zero vehicle positions, zero trip updates, for either line. Verified three ways across all 153 entities.
+  On the snapshot's service day, 13 rail trips were in progress and not one had a live record.</p>
+  <p class="so">Trains are shown from the timetable and always labelled <b>scheduled</b>. Presenting a
+  timetable with the same weight as a live prediction would be a lie by typography.</p>
+</div>
+
+<div class="find">
+  <span class="tag">Finding 04 · correctness</span>
+  <h3><code>delay</code> is signed, and a quarter of the values are negative</h3>
+  <p>2,054 of 8,453 (24.3%) are negative — early buses are the ordinary case. A negative int32 arrives as a
+  <b>10-byte sign-extended varint</b>: <code>-300</code> is <code>d4fdffffffffffffff01</code>, and those exact
+  bytes appear 116 times in the fixture.</p>
+  <p class="so">Read unsigned, <code>-300</code> becomes 18,446,744,073,709,551,316 and the departure time
+  lands about 584 billion years out. This is unit test #1.</p>
+</div>
+
+<div class="find">
+  <span class="tag">Finding 05 · a silent data loss</span>
+  <h3>One <code>service_id</code> exists only in <code>calendar_dates.txt</code></h3>
+  <p><code>319-T2</code> has no <code>calendar.txt</code> row at all, yet carries 250 rail trips and is active on
+  exactly one date. There is also no <code>feed_info.txt</code>, so expiry has to be derived from
+  <code>max(calendar.end_date, calendar_dates.date)</code>.</p>
+  <p class="so">A reader that builds its calendar from <code>calendar.txt</code> alone shows an empty rail
+  schedule on Saturday 2026-08-08 and never says why.</p>
+</div>
+
+<div class="find">
+  <span class="tag">Finding 06 · two days a year</span>
+  <h3>The service day is noon minus twelve hours, not midnight</h3>
+  <p>They coincide on 363 days. On 2026-03-08 the service day starts at <b>23:00 the evening before</b>;
+  on 2026-11-01 it starts at <b>01:00</b>. Neither date is inside the current feed window, so the cases are
+  unreachable from any snapshot taken now.</p>
+  <p class="so">The first version of this very check got it wrong — Python does wall-clock arithmetic on an
+  aware datetime, so subtracting 12 hours never crossed the offset. The port will meet the same landmine in
+  <code>java.time</code>. Do the subtraction on an instant, and test with synthetic dates.</p>
+</div>
+
+<h2>Also true, and worth knowing</h2>
+<table>
+  <tr><td>Route numbers collide</td><td>Eight <code>route_short_name</code>s are shared between Missouri and Illinois routes. "Route 1" is both <em>Gold</em> and <em>Main Street&nbsp;–&nbsp;State Street</em>. One agency row, so agency does not disambiguate.</td></tr>
+  <tr><td>Rail has four route IDs</td><td><code>19731B/R</code> and <code>19870B/R</code> — one pair per pick. Rail <code>route_id</code> is not stable across picks; bus is. <code>MLR</code>/<code>MLB</code> are short names, not IDs.</td></tr>
+  <tr><td>16% of trips are doubled</td><td>20 of 127 have every StopTimeUpdate repeated adjacently, byte-identical. Harmless under the one-delay-per-trip model, but evidence the producer is untidy.</td></tr>
+  <tr><td>Alerts have no <code>effect</code></td><td>Never set on any of 24. No detour/suspension classification is available — classify from the header text, or don't.</td></tr>
+  <tr><td>Vehicles carry lat/lon only</td><td>No <code>stop_id</code>, no <code>current_stop_sequence</code>, no bearing, no speed. "How far away" is a straight-line distance and must be labelled as one.</td></tr>
+  <tr><td>Bus coverage is good</td><td>121 of 133 in-progress trips (91%), 48 of 50 running routes. Fix age p50&nbsp;28&nbsp;s, p90&nbsp;61&nbsp;s.</td></tr>
+  <tr><td>58% of stops flagged inaccessible</td><td>2,978 of 5,118 carry <code>wheelchair_boarding = 2</code>. Real rider data that no other channel surfaces.</td></tr>
+  <tr><td>Gzip is worth 4.7×</td><td>All three realtime feeds together: 235 KB raw, <b>~52 KB gzipped</b>.</td></tr>
+</table>
+
+<h2>What the screen looks like</h2>
+<div class="mock">  <span class="d">10624</span>  GRAND METROLINK STATION
+<span class="d">  ─────────────────────────────────────</span>
+<span class="d">  ○</span> 11:52   MLB  MetroLink Blue Line
+         BLUE LINE TO FAIRVIEW HEIGHTS
+         <span class="d">scheduled</span>
+
+<span class="d">  ●</span> 11:56   70   Grand              <span class="d">MO</span>
+         NORTH — to Riverview
+         <span class="d">3 min late · live 22s ago</span>
+
+<span class="d">  ●</span> 12:04   70   Grand              <span class="d">MO</span>
+         <span class="d">canceled</span>
+<span class="d">  ─────────────────────────────────────
+  Schedule 2026-07-30 · expires in 26 days</span></div>
+<p class="lede">Live and scheduled are distinguished by weight and glyph, never colour — the tool is
+monochrome by discipline, since the panel is a colour OLED with no system grayscale filter. Route numbers are
+never shown bare. Canceled trips are shown, not removed: a rider who sees nothing assumes the app is broken.</p>
+
+<h2>Scope</h2>
+<div class="cols">
+  <div>
+    <ul class="mark in">
+      <li><b>Stop-number entry</b> and up to 12 saved stops</li>
+      <li><b>Next 8 departures</b> with early/late and cancellations</li>
+      <li><b>Trip detail</b> — vehicle distance, every stop to the terminus</li>
+      <li><b>Browse</b> — 38 rail stations, 45 transit centers, 62 routes</li>
+      <li><b>Service alerts</b>, filtered to your stops' routes</li>
+      <li><b>Fares, payment, accessibility, contacts</b> — bundled and dated</li>
+      <li><b>Other routes at this stop</b> (530 stops serve more than one)</li>
+      <li><b>Data age everywhere</b>; expiry replaces the list, not annotates it</li>
+      <li><b>Illinois routes</b> — same feed, disambiguated MO/IL</li>
+      <li><b>Call-A-Ride and Via</b> as reference cards</li>
+    </ul>
+  </div>
+  <div>
+    <ul class="mark out">
+      <li><b>Destination / address search</b> — needs a geocoder; that is a general network content client</li>
+      <li><b>"Stops near me"</b> — no consumable location API; verified, not assumed</li>
+      <li><b>Trip planning</b> — the first-party Directions tool already routes</li>
+      <li><b>Maps and route shapes</b> — 3.5 MB of the 3.7 MB feed, and the one thing that reads browser-adjacent</li>
+      <li><b>Park-and-ride lots</b> — not in the feed; the only source has no licence field</li>
+      <li><b>Departure alarms / push</b> — SDK push docs incomplete, and a nudge is the wrong instinct</li>
+      <li><b>Timetable PDFs</b> — no viewer, and the URL's pick ID can't be derived</li>
+      <li><b>Accounts, sync, history, sharing</b></li>
+    </ul>
+  </div>
+</div>
+
+<h2>Architecture, in one breath</h2>
+<table>
+  <tr><td>Modules</td><td><code>core/</code> pure JVM, no Android imports, fully tested before any UI exists · <code>data/</code> the only network and disk · <code>ui/</code> renders, no logic</td></tr>
+  <tr><td>RT decoder</td><td><b>Hand-rolled, ~200 lines.</b> Twelve fields to read, zero dependencies added, every trap becomes a test against real bytes. kotlinx-serialization kept live behind one interface — a probe is written and ready to settle it.</td></tr>
+  <tr><td>Storage</td><td><b>Binary columnar index, not Room.</b> 3.25 MB vs ~25 MB of SQLite; pure JVM so it lives in the test gate; byte-diffable against the Python reference. DataStore holds the twelve saved stop numbers and nothing else.</td></tr>
+  <tr><td>Time</td><td><code>java.time</code> (<code>kotlinx-datetime</code> is not allow-listed). Service-day arithmetic on an <code>Instant</code>, with synthetic DST fixtures.</td></tr>
+  <tr><td>Network</td><td>OkHttp. Conditional GETs, gzip, identifiable User-Agent, <b>no background realtime polling ever</b>. One daily job fetches a newer schedule. A 403 or 410 is a designed-for state — the licence is revocable and says so.</td></tr>
+  <tr><td>Permissions</td><td><code>INTERNET</code>, <code>ACCESS_NETWORK_STATE</code>. That is all. No location permission, though two are allow-listed.</td></tr>
+</table>
+
+<h2>Plan</h2>
+<div class="ph"><span class="k">Phase 0</span><span class="v"><b>Verify, don't trust</b><span>Six measurements before a line is written: publication cadence, conditional-request support, the protobuf probe, the SDK constraint sheet against a pinned commit, whether a tool can place a call, and the name — the tool <code>id</code> is permanent once published.</span></span></div>
+<div class="ph"><span class="k">Phase 1</span><span class="v"><b>The core, with no Android in sight</b><span>Time, calendar, index, decoder, join. 22 tasks, all pure JVM. The gate: green tests and agreement with the Python oracle <em>before</em> any UI exists.</span></span></div>
+<div class="ph"><span class="k">Phase 2</span><span class="v"><b>Tool shell</b><span><code>lighttool.toml</code>, bundled assets, index loader with atomic swap, and the first pass through the plugin scan.</span></span></div>
+<div class="ph"><span class="k">Phase 3</span><span class="v"><b>Screens</b><span>Six of them. Pure wiring, because the logic is already proven. Includes a monochrome audit and a process-death test on every screen.</span></span></div>
+<div class="ph"><span class="k">Phase 4</span><span class="v"><b>Refresh and resilience</b><span>The daily job, saved-stop survival across feed updates, the revocation path, airplane mode, and the two measurements that need a future feed.</span></span></div>
+<div class="ph"><span class="k">Phase 5</span><span class="v"><b>Submission</b><span>README with the verbatim Terms of Use, the vetting defense, the finite-by-rule audit, the trademark sweep.</span></span></div>
+
+<h2>Open questions</h2>
+<table>
+  <tr><th>#</th><th>Question</th><th>How it gets settled</th></tr>
+  <tr><td class="num">M1</td><td>How often are the <code>.pb</code> files republished? Nothing is documented anywhere.</td><td>Sample <code>header.timestamp</code> every 10&nbsp;s for 30&nbsp;min; take the modal delta.</td></tr>
+  <tr><td class="num">M2</td><td>Does the server honour <code>ETag</code> and gzip?</td><td>Three requests.</td></tr>
+  <tr><td class="num">M3</td><td>Does <code>readVarint64</code> tolerate a 10-byte varint? Everything else about kotlinx is settled by source reading — unknown fields are skipped, negative int32 truncates correctly.</td><td>Not a blocker. Run <code>harness/probe</code> case 1 (~2 min) only if you want to use kotlinx instead of the hand-rolled reader.</td></tr>
+  <tr><td class="num">M4</td><td>Does the feed encode holidays? On the six majors, <b>bus runs Sunday service while rail runs Weekend service</b> — different concepts, never merge them.</td><td>After 2026-08-31: <code>docs/06</code> check C3. Untestable today — the current window contains no holiday.</td></tr>
+  <tr><td class="num">M5</td><td>Do <code>stop_id</code>s survive a pick change? Saved stops depend on it.</td><td><code>docs/06</code> check C4 — <code>stl_diff_stop_ids</code> across two picks.</td></tr>
+  <tr><td class="num">M6</td><td>Can a tool place a phone call? Decides whether the 24/7 safety number is tappable.</td><td>Grep <code>sdk/shared</code> for <code>LightServiceMethod</code>.</td></tr>
+  <tr><td class="num">Q1</td><td>The name. <code>Gateway</code> has mild adjacency risk — Metro's own fare card is the <em>Gateway Card</em>.</td><td>Recommendation: <b>STL Departures</b>. Lock it by Phase 0.9 — the <code>id</code> is permanent.</td></tr>
+</table>
+
+<h2>Corrections — where a document lost to the data</h2>
+<table>
+  <tr><td><code>stop_code</code> is five digits</td><td>It is 3–5. A five-digit mask rejects 57% of stops.</td></tr>
+  <tr><td><code>MLR</code>/<code>MLB</code> are route IDs</td><td>They are short names. The IDs are <code>19731B/R</code> and <code>19870B/R</code>.</td></tr>
+  <tr><td>~31% of delays are negative</td><td>24.3% observed. Quote observed values in assertion failures.</td></tr>
+  <tr><td>Python handles DST for you</td><td>Aware-datetime arithmetic is wall-clock. This check got it wrong first time round.</td></tr>
+  <tr><td><code>versionName</code> allows <code>0.3.0-rc1</code></td><td>The published SDK docs say so; the plugin enforces strict semver since 2026-07-23. Ship <code>1.0.0</code>.</td></tr>
+  <tr><td>Mobility Database is a good source</td><td>Its copy is ~2 months stale and predates the current pick. Fetch from the agency directly.</td></tr>
+  <tr><td>The Tool Library is hand-reviewed</td><td>Only tier 1. Tier 2 installs anything Light's server signed, with no manual approval. Installed ≠ approved.</td></tr>
+  <tr><td>The PDF <code>pickId</code> matches the GTFS pick</td><td>It doesn't. Folders 314 and 317 resolve; 319 and 325 don't. It's an opaque CMS id.</td></tr>
+</table>
+
+<footer>
+  Full detail in <code>docs/01-DATA-FINDINGS.md</code>, <code>02-PRODUCT-SPEC.md</code>,
+  <code>03-ARCHITECTURE.md</code>, <code>04-BUILD-PLAN.md</code>, <code>05-VETTING-DEFENSE.md</code>,
+  <code>06-FEED-CHANGE-RUNBOOK.md</code>, and <code>CLAUDE.md</code>. Every figure here is reproduced by <code>harness/profile_feed.py</code>.
+  <br><br>
+  Transit data © Bi-State Development Agency dba Metro, used under its published Terms of Use.
+  Not affiliated with or endorsed by the agency.
+</footer>
+
+</div>
+</body>
+</html>
