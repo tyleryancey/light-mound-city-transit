@@ -95,6 +95,26 @@ class ServiceDayTest {
     }
 
     @Test
+    fun timeInsideRepeatedHourResolvesToSecondPass() {
+        assertEquals(
+            Instant.parse("2026-11-01T07:30:00Z"),
+            ServiceDay.resolve(LocalDate.of(2026, 11, 1), seconds(1, 30, 0), chicago),
+            "01:30:00 on fall-back day is start (06:00Z) + 1h30m = 07:30Z = 01:30 CST, the second pass " +
+                "through the repeated hour; a wall-clock reading picks the CDT first pass (06:30Z)",
+        )
+    }
+
+    @Test
+    fun timeInsideSpringGapResolvesAsElapsedNotGapShifted() {
+        assertEquals(
+            Instant.parse("2026-03-08T07:30:00Z"),
+            ServiceDay.resolve(LocalDate.of(2026, 3, 8), seconds(2, 30, 0), chicago),
+            "02:30:00 on spring-forward day is start (05:00Z) + 2h30m = 07:30Z = 01:30 CST; the local " +
+                "clock never shows 02:30 and a wall-clock reading gap-shifts to 08:30Z",
+        )
+    }
+
+    @Test
     fun dstTransitionDaysDifferFromMidnightByExactlyOneHour() {
         val springStart = ServiceDay.serviceDayStart(LocalDate.of(2026, 3, 8), chicago)
         val springMidnight = LocalDate.of(2026, 3, 8).atStartOfDay(chicago).toInstant()

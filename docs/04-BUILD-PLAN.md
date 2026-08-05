@@ -104,7 +104,11 @@ needed to run the tests.
       01:00 CDT; `24:12:00` on each; an ordinary day equals local midnight; the
       observed max `25:37:00`. **These dates are outside the feed window and are
       synthetic by necessity.** *Done 2026-08-05: 9 tests green; oracle cross-check
-      via `stl_gtfs_service_day` agrees (00:12 local ↔ 24:12:00 @ 87,120 s).*
+      via `stl_gtfs_service_day` agrees (00:12 local ↔ 24:12:00 @ 87,120 s). Review
+      added two in-transition cases (fall-back `01:30:00` → second pass 07:30Z;
+      spring `02:30:00` → 07:30Z, never gap-shifted) — the ≥24h rows alone coincide
+      under wall-clock semantics; both new tests mutation-verified against a
+      wall-clock `resolve`.*
 - [x] **1.4** `activeServices(date)` — `calendar` weekday bits **union**
       `calendar_dates` type 1, **minus** type 2. Test: `319-T2` on 2026-08-08 is
       active despite having no `calendar.txt` row; `325-T2` is not. *Done 2026-08-05,

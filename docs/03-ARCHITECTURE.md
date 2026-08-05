@@ -248,7 +248,13 @@ every test written in August. Required cases:
 | 2026-11-01 (fall back) | service day starts **2026-11-01 01:00 CDT** |
 | 2026-03-08, GTFS `24:12:00` | resolves to 2026-03-09 **00:12 CDT** |
 | 2026-11-01, GTFS `24:12:00` | resolves to 2026-11-02 **00:12 CST** |
+| 2026-11-01, GTFS `01:30:00` | resolves to **01:30 CST, the second pass** through the repeated hour (07:30Z) — a wall-clock reading picks the CDT first pass |
+| 2026-03-08, GTFS `02:30:00` | resolves to **01:30 CST** (07:30Z) — the local clock never shows 02:30; a wall-clock reading gap-shifts to 03:30 CDT |
 | any ordinary date | equals local midnight |
+
+*(The two in-transition rows were added Phase 1a after review: the original ≥24h rows
+coincide under elapsed and wall-clock semantics, so only a time inside the repeated
+or skipped hour discriminates the addition side of the rule. Mutation-verified.)*
 
 None of these dates fall inside the current feed window, so they are synthetic
 fixtures by necessity.
