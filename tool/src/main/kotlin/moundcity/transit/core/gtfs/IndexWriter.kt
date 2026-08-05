@@ -109,8 +109,16 @@ object IndexWriter {
             tripBuf.putShort(headsignIdx.getValue(t.headsign).toShort())
         }
 
+        // The RT join (ScheduleIndex.tripIndexOf) equates position in this sorted
+        // array with file-order tripIdx, which only holds if trips.txt arrives
+        // numerically sorted with no duplicates. Refuse loudly if that changes.
+        val tripIdInts = feed.trips.map { it.id.toInt() }
+        check(tripIdInts.zipWithNext().all { (a, b) -> a < b }) {
+            "trips.txt is no longer strictly sorted by numeric trip_id — " +
+                "the realtime join would silently return wrong trips"
+        }
         val tidBuf = ByteBuffer.allocate(feed.trips.size * 4).order(ByteOrder.LITTLE_ENDIAN)
-        for (id in feed.trips.map { it.id.toInt() }.sorted()) tidBuf.putInt(id)
+        for (id in tripIdInts) tidBuf.putInt(id)
 
         val codeBuf = ByteBuffer.allocate(stopIdsSorted.size * 4).order(ByteOrder.LITTLE_ENDIAN)
         for (id in stopIdsSorted) codeBuf.putInt(id)

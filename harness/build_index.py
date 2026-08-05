@@ -53,8 +53,12 @@ off_blob=struct.pack(f'<{len(offsets)}I', *offsets)
 heads=sorted(set(t['trip_headsign'] for t in trips)); hidx={h:i for i,h in enumerate(heads)}
 trip_blob=b''.join(struct.pack('<BBBH', ridx[t['route_id']], svcidx[t['service_id']],
                                int(t['direction_id']), hidx[t['trip_headsign']]) for t in trips)
-# trip_id lookup (RT join): sorted u32 trip_ids for binary search
-tid_blob=struct.pack(f'<{len(trip_ids)}I', *sorted(int(t) for t in trip_ids))
+# trip_id lookup (RT join): sorted u32 trip_ids for binary search.
+# tripIndexOf equates sorted position with file-order trip index, so trips.txt
+# must arrive strictly numerically sorted — mirrored in the Kotlin IndexWriter.
+_ti=[int(t) for t in trip_ids]
+assert all(a<b for a,b in zip(_ti,_ti[1:])), "trips.txt not strictly sorted by numeric trip_id -- RT join would mis-join"
+tid_blob=struct.pack(f'<{len(trip_ids)}I', *_ti)
 
 # ---- strings ----
 def strtab(items):
