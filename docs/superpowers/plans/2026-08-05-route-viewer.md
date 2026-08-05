@@ -33,7 +33,7 @@
 
 **Interfaces:** Produces the task texts 1.23/1.24 that Tasks 2–5 implement; no code.
 
-- [ ] **Step 1: CLAUDE.md decisions table.** Replace the D6 row (grep anchor `| D6 |`) with:
+- [x] **Step 1: CLAUDE.md decisions table.** Replace the D6 row (grep anchor `| D6 |`) with:
 
 ```markdown
 | D6 | No basemap, no map tiles, no geocoder, no trip planning. The schematic route viewer (D12) draws feed geometry only — ~60 KB of decimated shapes — and shows where the **bus** is, never where **you** are | rewritten 2026-08-05 when D12 reopened the shapes question; the original 3.5 MB objection fell to measurement (59 KB at DP-10m) |
@@ -45,13 +45,13 @@ After the D11 row, add:
 | D12 | **Schematic route viewer + "about N stops back" committed** (user, 2026-08-05). Canvas polyline + stops + vehicle dots, bus realtime only, rail static "scheduled"; fit-to-screen, no pan/zoom; entry Browse → route. Q2 closed as promoted. Spec: `docs/superpowers/specs/2026-08-05-route-viewer-design.md` | user promoted it accepting the D6 reopen and doc 05 reframe |
 ```
 
-- [ ] **Step 2: CLAUDE.md open questions.** Replace the Q2 row (grep anchor `| Q2 |`) with:
+- [x] **Step 2: CLAUDE.md open questions.** Replace the Q2 row (grep anchor `| Q2 |`) with:
 
 ```markdown
 | Q2 | ~~Is `about N stops back` worth building?~~ **PROMOTED TO COMMITTED SCOPE 2026-08-05 (D12)** — replaces straight-line distance on trip detail; distance rides along when N ≤ 1 | settled | build plan 1.24 + 3.4 |
 ```
 
-- [ ] **Step 3: doc 04 — new tasks.** After task 1.22's block, add:
+- [x] **Step 3: doc 04 — new tasks.** After task 1.22's block, add:
 
 ```markdown
 - [ ] **1.23** Shapes into the index (D12): parse `trips.shape_id` + `shapes.txt`;
@@ -63,7 +63,7 @@ After the D11 row, add:
 - [ ] **1.24** `core/query/Approach.kt` — "about N stops back" from tripStops +
       stop_geo (never shapes): nearest trip-stop by equirectangular distance
       (cos of vehicle latitude), N by sequence position. Phrasings: N≥2 "about N
-      stops away"; N=1 "about 1 stop away · X.X km"; N=0 "approaching · X.X km";
+      stops away"; N=1 "about 1 stop away · X.X mi"; N=0 "approaching · X.X mi" (miles — user decision 2026-08-05);
       N<0 "passed". Synthetic geometry tests + one real-fixture golden.
 ```
 
@@ -91,9 +91,9 @@ In the Sequencing-risk table, add a row:
 | Index growth from shapes (D12) | container v2 exceeds ~3.35 MB | DP tolerance is the dial — 25 m halves the section; re-anchor and remeasure |
 ```
 
-- [ ] **Step 4: doc 02.** Locate the Q2 discussion (grep `N stops back`) and the feature ledger's route-viewer/maps cut line (grep `map` / `viewer`); update both to reference D12 as committed scope, and amend the 3.4 screen description to the Task 1 Step 3 wording. Add the viewer to the screens list as §3.11-equivalent prose: entry, direction toggle, bus-live/rail-static split, no pan/zoom, no user location.
-- [ ] **Step 5: doc 05.** Locate the maps/no-maps defense passage (grep `map`). Reframe: the tool draws **feed geometry only** (~60 KB decimated polylines, one route at a time, ≤120 bundled); vehicle dots are the agency's own published positions, capped by the feed's 127; there is **no basemap, no tiles, no geocoding, no routing, and no user location** — the screen shows where the bus is, never where the rider is; refresh is manual with a 30 s floor, so there is still no engagement loop.
-- [ ] **Step 6: Verify and commit.**
+- [x] **Step 4: doc 02.** Locate the Q2 discussion (grep `N stops back`) and the feature ledger's route-viewer/maps cut line (grep `map` / `viewer`); update both to reference D12 as committed scope, and amend the 3.4 screen description to the Task 1 Step 3 wording. Add the viewer to the screens list as §3.11-equivalent prose: entry, direction toggle, bus-live/rail-static split, no pan/zoom, no user location.
+- [x] **Step 5: doc 05.** Locate the maps/no-maps defense passage (grep `map`). Reframe: the tool draws **feed geometry only** (~60 KB decimated polylines, one route at a time, ≤120 bundled); vehicle dots are the agency's own published positions, capped by the feed's 127; there is **no basemap, no tiles, no geocoding, no routing, and no user location** — the screen shows where the bus is, never where the rider is; refresh is manual with a 30 s floor, so there is still no engagement loop.
+- [x] **Step 6: Verify and commit.**
 
 Run: `grep -c "D12" CLAUDE.md docs/04-BUILD-PLAN.md` — expect ≥1 in each; `grep -n "1.23\|1.24\|3.11" docs/04-BUILD-PLAN.md` — expect all three present.
 
@@ -513,8 +513,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ```kotlin
 sealed interface ApproachEstimate {
-    data class StopsAway(val n: Int, val distanceKm: Double?) : ApproachEstimate  // distanceKm non-null iff n == 1
-    data class Approaching(val distanceKm: Double) : ApproachEstimate
+    data class StopsAway(val n: Int, val distanceMi: Double?) : ApproachEstimate  // distanceMi non-null iff n == 1
+    data class Approaching(val distanceMi: Double) : ApproachEstimate
     object Passed : ApproachEstimate
     fun text(): String
 }
@@ -527,7 +527,7 @@ object Approach {
 }
 ```
 
-Text forms (exact): `"about N stops away"` (N≥2), `"about 1 stop away · X.X km"`, `"approaching · X.X km"`, `"passed"`. Distance is equirectangular: `dLat` and `dLon·cos(vehicle lat)` in degrees, `× 111.0` km per degree, one decimal via `"%.1f".format(km)`.
+Text forms (exact): `"about N stops away"` (N≥2), `"about 1 stop away · X.X mi"`, `"approaching · X.X mi"`, `"passed"`. Distance is equirectangular: `dLat` and `dLon·cos(vehicle lat)` in degrees, `× 69.0` miles per degree (folk constant, 0.04% off 68.97 — irrelevant at one decimal under 2 mi), one decimal via `"%.1f".format(mi)`.
 
 - [ ] **Step 1: Write the failing tests:**
 
@@ -547,7 +547,7 @@ import kotlin.test.assertTrue
 
 class ApproachTest {
 
-    // A straight north-south line of 6 stops, 0.01° (~1.1 km) apart, seq 1..6.
+    // A straight north-south line of 6 stops, 0.01° (~0.69 mi) apart, seq 1..6.
     private val stops = (0 until 6).map { StopTimeRow(stopIdx = it, minute = 480 + it, seq = it + 1) }
     private fun lat(idx: Int) = 38_000_000 + idx * 10_000
     private fun lon(@Suppress("UNUSED_PARAMETER") idx: Int) = -90_000_000
@@ -559,20 +559,20 @@ class ApproachTest {
     fun fourStopsBackReadsAboutFour() {
         val e = est(targetSeq = 6, vLat = lat(1), vLon = lon(1))
         assertEquals("about 4 stops away", (e as ApproachEstimate.StopsAway).text(), "vehicle at stop 2, target stop 6")
-        assertNull(e.distanceKm, "distance only rides along at N == 1")
+        assertNull(e.distanceMi, "distance only rides along at N == 1")
     }
 
     @Test
     fun oneStopBackCarriesDistance() {
         val e = est(targetSeq = 3, vLat = lat(1), vLon = lon(1)) as ApproachEstimate.StopsAway
         assertEquals(1, e.n, "vehicle at stop 2, target stop 3")
-        assertEquals("about 1 stop away · 1.1 km", e.text(), "≈1.1 km at 0.01° latitude spacing")
+        assertEquals("about 1 stop away · 0.7 mi", e.text(), "0.01° latitude spacing ≈ 0.69 mi")
     }
 
     @Test
     fun atTargetReadsApproaching() {
         val e = est(targetSeq = 3, vLat = lat(2) - 2_000, vLon = lon(2))
-        assertEquals("approaching · 0.2 km", (e as ApproachEstimate.Approaching).text(), "nearest is the target itself, 0.002° short")
+        assertEquals("approaching · 0.1 mi", (e as ApproachEstimate.Approaching).text(), "nearest is the target itself, 0.002° ≈ 0.14 mi short")
     }
 
     @Test
@@ -607,7 +607,7 @@ class ApproachTest {
     fun realFixtureGoldenTrip3407211() {
         // Golden computed independently in Python during planning (2026-08-05):
         // vehicle (38.734341, -90.354401) on trip 3407211; nearest stop 9208 at
-        // seq 92; target stop 9213 at seq 96 -> about 4 stops away (~1.4 km).
+        // seq 92; target stop 9213 at seq 96 -> about 4 stops away (~0.9 mi).
         val feed = ZipFile(FixturePaths.gtfsZip).use { zip ->
             GtfsFeed.load { name -> zip.getInputStream(zip.getEntry(name)).bufferedReader() }
         }
@@ -618,7 +618,7 @@ class ApproachTest {
             vehLatMicro = 38_734_340, vehLonMicro = -90_354_400,
             stopLatMicro = index::stopLatMicro, stopLonMicro = index::stopLonMicro,
         )
-        assertEquals("about 4 stops away", (e as ApproachEstimate.StopsAway).text(), "the planning-time Python golden")
+        assertEquals("about 4 stops away", (e as ApproachEstimate.StopsAway).text(), "the planning-time Python golden (N=4; ~0.9 mi, not shown at N>1)")
     }
 }
 ```
@@ -634,14 +634,14 @@ import moundcity.transit.core.gtfs.StopTimeRow
 sealed interface ApproachEstimate {
     fun text(): String
 
-    data class StopsAway(val n: Int, val distanceKm: Double?) : ApproachEstimate {
+    data class StopsAway(val n: Int, val distanceMi: Double?) : ApproachEstimate {
         override fun text(): String =
-            if (n == 1) "about 1 stop away · ${"%.1f".format(distanceKm)} km"
+            if (n == 1) "about 1 stop away · ${"%.1f".format(distanceMi)} mi"
             else "about $n stops away"
     }
 
-    data class Approaching(val distanceKm: Double) : ApproachEstimate {
-        override fun text(): String = "approaching · ${"%.1f".format(distanceKm)} km"
+    data class Approaching(val distanceMi: Double) : ApproachEstimate {
+        override fun text(): String = "approaching · ${"%.1f".format(distanceMi)} mi"
     }
 
     object Passed : ApproachEstimate {
@@ -657,7 +657,7 @@ sealed interface ApproachEstimate {
  */
 object Approach {
 
-    private const val KM_PER_DEG = 111.0
+    private const val MI_PER_DEG = 69.0
 
     fun estimate(
         tripStops: List<StopTimeRow>,
@@ -695,12 +695,12 @@ object Approach {
     ): Double {
         val dLat = stopLatMicro(stop.stopIdx) / 1e6 - vLat
         val dLon = (stopLonMicro(stop.stopIdx) / 1e6 - vLon) * k
-        return Math.sqrt(dLat * dLat + dLon * dLon) * KM_PER_DEG
+        return Math.sqrt(dLat * dLat + dLon * dLon) * MI_PER_DEG
     }
 }
 ```
 
-- [ ] **Step 4: Run the tests; expect green.** If `oneStopBackCarriesDistance` fails on the exact km string, print the computed value — the synthetic grid gives 0.01° × 111 = 1.11 → "1.1"; do not loosen the assertion, fix the constant use.
+- [ ] **Step 4: Run the tests; expect green.** If `oneStopBackCarriesDistance` fails on the exact mi string, print the computed value — the synthetic grid gives 0.01° × 69 = 0.69 → "0.7"; do not loosen the assertion, fix the constant use.
 - [ ] **Step 5: Run the FULL suite.** `./gradlew :tool:testDebugUnitTest` — everything green.
 - [ ] **Step 6: Commit.**
 

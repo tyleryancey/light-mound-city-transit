@@ -152,10 +152,17 @@ input design was built on the fact that **every stop already has a unique number
 printed on its sign**. Two permissions, both about the network, neither about the
 user.
 
-**We ship no map.** `shapes.txt` is 3.5 MB of the 3.7 MB feed and is dropped
-entirely. That keeps the on-device index at 3.25 MB, keeps the tool out of
-browser-adjacent territory, and keeps the UI to rows of text on a 3.92" screen —
-which is what that screen is good at.
+**We ship no map — we ship a schematic.** *(Reframed 2026-08-05, D12.)* The route
+viewer draws **feed geometry only**: ~60 KB of decimated polylines (one
+representative shape per route+direction, 120 total, Douglas-Peucker at 10 m),
+the route's own stops, and — for buses — the agency's own published vehicle
+positions, capped by the feed itself (127 in the reference capture). There is
+**no basemap, no map tiles, no geocoding, no routing, and no user location**:
+the screen shows where the bus is, never where the rider is, and the tool still
+requests no location permission. One route at a time, fit-to-screen, refresh
+manual with a 30 s floor — there is still nothing to check compulsively. The
+original "3.5 MB of shapes" objection fell to measurement; the index grows by
+~2%, not by megabytes.
 
 ---
 
@@ -166,6 +173,7 @@ Every surface, with its bound, to be re-checked at submission.
 | Surface | Bound | Enforced |
 |---|---|---|
 | Departures at a stop | 8 | constant in the query |
+| Route viewer (D12) | one route+direction at a time; ≤120 bundled polylines; vehicle dots ≤ the feed's own count (127 in the reference capture) | the index carries exactly one shape per pair; vehicles filtered to the viewed route |
 | Saved stops | 12 | rejected at add |
 | Remaining stops on a trip | end of line (max 141 in the feed) | trip length |
 | Rail stations | 38 | feed |

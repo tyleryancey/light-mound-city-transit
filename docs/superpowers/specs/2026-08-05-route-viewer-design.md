@@ -65,8 +65,8 @@ counter works identically even if geometry changes later.
   `N = indexOf(targetSeq) − indexOf(nearestStop)` over the trip's stop list.
 - **Phrasings:**
   - N ≥ 2 → "about N stops away"
-  - N = 1 → "about 1 stop away · X.X km" (straight-line vehicle→target, one decimal)
-  - N = 0 → "approaching · X.X km"
+  - N = 1 → "about 1 stop away · X.X mi" (straight-line vehicle→target, one decimal; **miles** — user decision 2026-08-05, matching doc 02's original unit)
+  - N = 0 → "approaching · X.X mi"
   - N < 0 → "passed"
 - **Loops:** a trip visiting a stop twice resolves the vehicle to whichever
   occurrence is nearest; "about" and the three known loop-route exceptions (1.20)

@@ -129,12 +129,13 @@ doc 01.
 | D3 | Bundled schedule + daily background refresh | works on first launch and offline; feed expires in 26 days |
 | D4 | **Hand-rolled RT decoder** (~200 lines), kotlinx kept as a live alternative behind `RtDecoder` | 12 fields to read, 1,071 useful bytes of 207 KB, zero added deps; see D4a |
 | D5 | Binary columnar index, **not Room** | 3.25 MB vs ~25 MB SQLite; pure JVM so it lives in the test gate; diffable against Python |
-| D6 | No maps, no geocoder, no trip planning | category risk, 3.5 MB of shapes, and Directions already routes |
+| D6 | No basemap, no map tiles, no geocoder, no trip planning. The schematic route viewer (D12) draws feed geometry only — ~60 KB of decimated shapes — and shows where the **bus** is, never where **you** are | rewritten 2026-08-05 when D12 reopened the shapes question; the original 3.5 MB objection fell to measurement (59 KB at DP-10m) |
 | D7 | No location permission requested | nothing to consume it; and `permissions = [INTERNET, ACCESS_NETWORK_STATE]` reads best |
 | D8 | Fares/holidays/contacts bundled, versioned, **dated on screen** | not in the feed; Metro is mid fare-migration |
 | D9 | Data age on every screen; expiry **replaces** the list | you asked for it, and a greyed-out time is still a time |
 | D10 | Realtime is foreground and user-initiated only | 15-min `LightWork` floor rules out useful background polling anyway, and on-demand is the light-ethos answer |
 | D11 | **DECIDED 2026-08-05 (Phase 0.9): `Mound City Transit`, `id = moundcity.transit`.** User's call over the `STL Departures` recommendation; zero trademark risk, nickname obscure to non-locals but geographic and unmistakably non-Metro. The `id` is permanent once published. | see below |
+| D12 | **Schematic route viewer + "about N stops back" committed** (user, 2026-08-05). Canvas polyline + stops + vehicle dots, bus realtime only, rail static "scheduled"; fit-to-screen, no pan/zoom; entry Browse → route; distances in **miles**. Q2 closed as promoted. Spec: `docs/superpowers/specs/2026-08-05-route-viewer-design.md` | user promoted it accepting the D6 reopen and doc 05 reframe |
 
 **D4a — the decoder decision is evidence-backed and all but closed.** Maven Central is
 unreachable from the sandbox this was planned in, so kotlinx-serialization-protobuf
@@ -180,8 +181,9 @@ uses this value.
 
 Six measurements and two design questions; each has a protocol in doc 03 §7.
 **After Phase 0 (2026-08-05): M1, M2, M6, Q1 settled below; M3 skipped as optional
-(D4 stands). Still genuinely open: M4 and M5 (both wait for the 2026-08-31 pick
-change; Phase 4 tasks 4.7/4.8) and Q2 (ship without, judge on device).**
+(D4 stands). Q2 settled later the same day — promoted to committed scope (D12).
+Still genuinely open: M4 and M5 only (both wait for the 2026-08-31 pick change;
+Phase 4 tasks 4.7/4.8).**
 
 | # | Question | Blocks | How to settle |
 |---|---|---|---|
@@ -192,7 +194,7 @@ change; Phase 4 tasks 4.7/4.8) and Q2 (ship without, judge on device).**
 | M5 | Do `stop_id`s survive a pick change? | how loud saved-stop migration must be | `docs/06` C4 |
 | M6 | ~~Can a tool place a phone call?~~ **ANSWERED 2026-08-05, Phase 0.6: NO.** At pinned commit `9aed6ff`, `LightServiceMethod.kt` defines exactly 8 methods — GetToken, GetVersion, SetRingtone, GetKeyboardOptions, GetUserPreferences, GetPermission, RequestPermissionComponent, DeviceKeyEvent. Nothing dials or opens contacts. **Contacts screen is read-only.** | ~~contacts screen~~ settled | grep `sdk/shared` for `LightServiceMethod` — done |
 | Q1 | ~~Which name / `id`?~~ **DECIDED 2026-08-05: `Mound City Transit`, `id = moundcity.transit`** (see D11) | settled | doc 02 §1 — decided at Phase 0.9 |
-| Q2 | Is `about N stops back` worth building? | Phase 3 scope | ship without it; add if the straight-line distance reads badly on device |
+| Q2 | ~~Is `about N stops back` worth building?~~ **PROMOTED TO COMMITTED SCOPE 2026-08-05 (D12)** — replaces straight-line distance on trip detail; distance (miles) rides along when N ≤ 1 | settled | build plan 1.24 + 3.4 |
 
 **M4 matters more than it looks.** On the six major holidays **MetroBus runs Sunday
 service while MetroLink runs Weekend service** — different concepts that coincide most

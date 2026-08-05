@@ -174,6 +174,21 @@ needed to run the tests.
 - [ ] **1.22** MO/IL disambiguation: assert the eight colliding `route_short_name`s
       resolve to distinct routes and never render bare.
 
+### 1e — route viewer data (D12)
+- [ ] **1.23** Shapes into the index (D12): parse `trips.shape_id` + `shapes.txt`;
+      assertion **A15** (every route+direction pair has ≥1 shaped trip; observed
+      120/120) refuses the build; representative shape per pair (most-used, tie →
+      lexicographically smallest id); Douglas-Peucker at 10 m; three new sections
+      `shape_keys`/`shape_offsets`/`shape_pts`; container **v2**; byte-diff
+      re-anchored with the Python mirror in the same commit. Sections ≈ 60 KB.
+- [ ] **1.24** `core/query/Approach.kt` — "about N stops back" from tripStops +
+      stop_geo (never shapes): nearest trip-stop by equirectangular distance
+      (cos of vehicle latitude), N by sequence position. Phrasings: N≥2 "about N
+      stops away"; N=1 "about 1 stop away · X.X mi"; N=0 "approaching · X.X mi"
+      (miles — user decision 2026-08-05); N<0 "passed". Loop ties resolve to the
+      first occurrence (conservative overestimate). Synthetic geometry tests + one
+      real-fixture golden. Plan: `docs/superpowers/plans/2026-08-05-route-viewer.md`.
+
 **Exit gate:** `./gradlew :tool:testDebugUnitTest` green, every case above covered,
 and the Kotlin engine agreeing with the Python oracle on every `stl_oracle_cases`
 case. **No UI code exists yet.** If a milestone slips, it slips here — not by
@@ -208,8 +223,9 @@ Each renders a view model backed by `core`. No logic moves into `ui/`.
       that number", never a crash.
 - [ ] **3.3** Departures. Bounded at 8. Weight-and-glyph distinction for live vs
       scheduled. Manual refresh only.
-- [ ] **3.4** Trip detail: remaining stops to terminus; straight-line distance,
-      labelled; vehicle id and fix age.
+- [ ] **3.4** Trip detail: remaining stops to terminus; **"about N stops back"
+      (1.24) replaces the straight-line distance**, which rides along (in miles)
+      only when N ≤ 1; vehicle id and fix age.
 - [ ] **3.5** Browse: 38 rail stations, 45 transit centers, 62 routes grouped
       MO / IL / Rail.
 - [ ] **3.6** Alerts: filtered to saved-stop routes by default, full description on
@@ -221,6 +237,11 @@ Each renders a view model backed by `core`. No logic moves into `ui/`.
 - [ ] **3.9** Monochrome audit: grep for `Color(` in `ui/`. Zero hits.
 - [ ] **3.10** Process-death test: kill and relaunch on every screen; each rebuilds
       from DataStore + index. The back stack and view models are in-memory only.
+- [ ] **3.11** Schematic route viewer (D12): Browse → route → Canvas polyline +
+      stops (hollow circles) + vehicle dots (filled glyphs), direction toggle,
+      fit-to-screen only. Bus: vehicles from last manual refresh, fix age, 30 s
+      floor. Rail: static, "scheduled — no live train positions". Monochrome;
+      no user location; expiry replaces the screen (D9).
 
 ---
 
@@ -279,6 +300,7 @@ Each renders a view model backed by `core`. No logic moves into `ui/`.
 | Fare migration phase 3 on 2026-08-17 | — | fares are dated and bundled, so this is a content refresh, not a code change |
 | New pick 2026-08-31 | rail `route_id`s change | 1.22 and 4.4 exist for exactly this |
 | Category question at review | — | doc 05, written on day one, not at submission |
+| Index growth from shapes (D12) | container v2 exceeds ~3.35 MB | DP tolerance is the dial — 25 m halves the section; re-anchor and remeasure |
 
 ---
 

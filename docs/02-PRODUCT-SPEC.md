@@ -154,12 +154,14 @@ Reached by tapping a departure. Answers "where is it and what happens after me".
 - **Vehicle position, honestly labelled.** VehiclePositions carries only `latitude`
   and `longitude` — no `stop_id`, no `current_stop_sequence`, no `bearing`, no
   `speed`. So the tool computes:
-  - `≈ 1.4 mi away (straight line)` — great-circle distance from the vehicle to
-    *this stop*, whose coordinates are in the static feed. The words "straight line"
-    are load-bearing and are not abbreviated away.
-  - `about 6 stops back` — by projecting the vehicle's position onto this trip's
-    stop sequence and taking the nearest not-yet-passed stop. This is an inference,
-    is labelled `about`, and is a Phase 3 refinement, not a v1 requirement.
+  - `about 6 stops back` — the vehicle resolved to its nearest stop on this trip's
+    sequence (**D12, committed scope**; build task 1.24). An inference, labelled
+    `about`; on a loop's repeated stop the count is conservative — it overestimates
+    rather than promising early. **This replaces the straight-line distance line.**
+  - When the bus is close (N ≤ 1) the straight-line distance rides along, in miles:
+    `about 1 stop away · 0.4 mi (straight line)`, `approaching · 0.2 mi (straight
+    line)`. The words "straight line" stay load-bearing; the figure never stands
+    alone or headlines.
   - `Vehicle 3835 · seen 22s ago`.
 - **Remaining stops on this trip**, from here to the end of the line, with times.
   Bounded by the trip — the longest trip in the feed has 141 stops, and the list
@@ -255,6 +257,18 @@ guessing.
 
 ---
 
+### 3.7 Route viewer (D12, added 2026-08-05)
+
+A schematic, not a map: Compose Canvas draws the route's decimated polyline
+(~60 KB bundled for all 120 route+direction pairs), its stops as hollow circles,
+and — for bus routes — vehicle dots as filled glyphs, from the last manual
+refresh, with the fix age printed. Entry is Browse → route, with a direction
+toggle. Fit-to-screen only; no pan, no zoom. Rail shows the line and its
+stations under the header "scheduled — no live train positions". There is no
+basemap, no tiles, and **no user location anywhere on the screen** — it shows
+where the bus is, never where you are. Expiry replaces this screen exactly as it
+replaces every list. Spec: `docs/superpowers/specs/2026-08-05-route-viewer-design.md`.
+
 ## 4. Data age and failing visibly
 
 This is a requirement, not a nicety, and it has a screen of its own.
@@ -295,7 +309,7 @@ The most important section for vetting.
 | **Destination entry — address, landmark, business name** | Needs a geocoder. No geocoding service is allow-listed, and adding one turns a single-source public-data reader into a general network content client — the exact question a reviewer will ask. It is also trip planning, which is what the first-party **Directions** tool already does, including a public-transit mode. |
 | **"Stops near me"** | Not buildable. Verified against the plugin's blocked list, not assumed. If the SDK later exposes a location service method this becomes a one-screen addition — file it as an upstream request, not a local workaround. |
 | **Trip planning / A→B routing** | Same as above. Direct overlap with a first-party tool. |
-| **Maps, route shapes, vehicle-on-map** | No map surface fits a 3.92" monochrome discipline usefully, `shapes.txt` is 3.5 MB of the 3.7 MB feed, and a map is the one thing that would push this toward "browser-adjacent". Dropping it is what makes the on-device index 3.25 MB. |
+| **Basemaps, map tiles, all-vehicle system map** | *(Narrowed 2026-08-05 by D12: a schematic route viewer — feed geometry only, one route at a time — is now committed scope, §3.7.)* What stays cut: any basemap or tile source (browser-adjacent, third-party dependency), and a live all-vehicle system board (a screen designed to be checked repeatedly). The 3.5 MB shapes objection fell to measurement — the viewer bundles ~60 KB of decimated polylines. |
 | **Park-and-ride lots** | Not in the feed — exactly one stop name is a genuine match out of two hits, the other being "RIDER TRAIL". The only source is Metro's ArcGIS hub, whose layers carry **no license field at all**. Not worth the licensing ambiguity for a low-value list. |
 | **Departure alarms / push notifications** | Push documentation is explicitly incomplete in the SDK, and a notification that nudges you to check the phone is precisely the behaviour the Light Phone exists to remove. |
 | **Per-route timetable PDFs** | No PDF viewer, no browser. And the `{pickId}` in the URL is an opaque CMS id that does not match the pick numbers in the GTFS `service_id`s (verified: folders 314 and 317 resolve; 319 and 325 do not), so it cannot even be derived. |
@@ -382,7 +396,8 @@ with no feed exception, show `Holiday — service may differ` above the list.
 
 ## 8. Non-goals for v1, worth doing later
 
-- `about N stops back` positional inference (Phase 3)
+- ~~`about N stops back` positional inference (Phase 3)~~ *promoted to committed
+  scope 2026-08-05 (D12; build task 1.24)*
 - Saved-stop reordering
 - A second agency (the architecture is agency-shaped, but shipping one is the point)
 - Alert push (blocked on SDK push docs, and probably permanently declined on ethos
