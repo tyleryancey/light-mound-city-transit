@@ -33,12 +33,16 @@ class BuiltIndex internal constructor(val sections: LinkedHashMap<String, ByteAr
 
 object IndexContainer {
     val MAGIC = byteArrayOf(0x4D, 0x43, 0x54, 0x31) // "MCT1"
-    const val VERSION = 1
+    const val VERSION = 2
 
-    /** Section names in the one true order; the container stores lengths only. */
+    /** Section names in the one true order; the container stores lengths only.
+     * v2 (Phase 1d) appended route_ids/service_ids/calendar/calendar_dates —
+     * the on-device board needs active-service computation and route-id joins
+     * that doc 03 §3's original table omitted. */
     val SECTION_ORDER = listOf(
         "departures", "stop_offsets", "trip_meta", "trip_id_sorted", "stop_names",
         "headsigns", "route_names", "stop_codes", "stop_geo", "wheelchair",
+        "route_ids", "service_ids", "calendar", "calendar_dates",
     )
 
     fun parse(container: ByteArray): LinkedHashMap<String, ByteArray> {
@@ -150,8 +154,41 @@ object IndexWriter {
         sections["stop_codes"] = codeBuf.array()
         sections["stop_geo"] = geoBuf.array()
         sections["wheelchair"] = wbBytes
+
+        // v2: calendar + route ids, so the board can run from the index alone
+        sections["route_ids"] = stringTable(feed.routes.map { it.id })
+        sections["service_ids"] = stringTable(feed.serviceIds)
+        val calByService = feed.calendar.associateBy { it.serviceId }
+        val calBuf = ByteBuffer.allocate(feed.serviceIds.size * 9).order(ByteOrder.LITTLE_ENDIAN)
+        for (sid in feed.serviceIds) {
+            val row = calByService[sid]
+            if (row == null) {
+                calBuf.putInt(0); calBuf.putInt(0); calBuf.put(0)
+            } else {
+                calBuf.putInt(dateInt(row.startDate))
+                calBuf.putInt(dateInt(row.endDate))
+                var bits = 0
+                for (d in row.activeDays) bits = bits or (1 shl (d.value - 1)) // Monday=bit0
+                calBuf.put(bits.toByte())
+            }
+        }
+        sections["calendar"] = calBuf.array()
+        val cdBuf = ByteBuffer.allocate(feed.calendarDates.size * 6).order(ByteOrder.LITTLE_ENDIAN)
+        for (cd in feed.calendarDates) {
+            // Python's struct.pack('<B') raises past 255; toByte() would
+            // truncate silently — refuse in lockstep (review finding, Phase 1d).
+            check(cd.exceptionType in 0..255) {
+                "calendar_dates exception_type ${cd.exceptionType} exceeds u8 — refusing to build"
+            }
+            cdBuf.put(serviceIdx.getValue(cd.serviceId).toByte())
+            cdBuf.put(cd.exceptionType.toByte())
+            cdBuf.putInt(dateInt(cd.date))
+        }
+        sections["calendar_dates"] = cdBuf.array()
         return BuiltIndex(sections)
     }
+
+    private fun dateInt(d: java.time.LocalDate): Int = d.year * 10000 + d.monthValue * 100 + d.dayOfMonth
 
     /** u32 LE offsets (n+1 entries into the blob, first 0, last = blob length), then UTF-8 blob. */
     private fun stringTable(items: List<String>): ByteArray {

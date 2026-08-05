@@ -129,6 +129,51 @@ class ScheduleIndex(container: ByteArray) {
     fun tripDirection(tripIdx: Int): Int = tripMeta.get(tripIdx * 5 + 2).toInt() and 0xFF
     fun tripHeadsign(tripIdx: Int): Int = tripMeta.getShort(tripIdx * 5 + 3).toInt() and 0xFFFF
 
+    // --- v2: route ids, services, calendar ---
+
+    private val routeIds = StringTable(sections.getValue("route_ids"))
+    private val serviceIds = StringTable(sections.getValue("service_ids"))
+    private val calendarBuf = buf("calendar")
+    private val calendarDatesBuf = buf("calendar_dates")
+
+    val serviceCount: Int get() = serviceIds.size
+
+    fun routeId(routeIdx: Int): String = routeIds[routeIdx]
+
+    fun routeIndexOf(routeId: String): Int? {
+        for (i in 0 until routeIds.size) if (routeIds[i] == routeId) return i
+        return null
+    }
+
+    fun serviceId(serviceIdx: Int): String = serviceIds[serviceIdx]
+
+    /** Active service indexes for a date, computed entirely from the index. */
+    fun activeServiceIdxs(date: java.time.LocalDate): Set<Int> {
+        val calendar = (0 until serviceCount).mapNotNull { i ->
+            val start = calendarBuf.getInt(i * 9)
+            val end = calendarBuf.getInt(i * 9 + 4)
+            val bits = calendarBuf.get(i * 9 + 8).toInt() and 0xFF
+            if (start == 0) null else moundcity.transit.core.time.CalendarRow(
+                serviceId = serviceId(i),
+                startDate = intDate(start),
+                endDate = intDate(end),
+                activeDays = java.time.DayOfWeek.entries.filter { bits and (1 shl (it.value - 1)) != 0 }.toSet(),
+            )
+        }
+        val exceptions = (0 until sections.getValue("calendar_dates").size / 6).map { j ->
+            moundcity.transit.core.time.CalendarDateRow(
+                serviceId = serviceId(calendarDatesBuf.get(j * 6).toInt() and 0xFF),
+                exceptionType = calendarDatesBuf.get(j * 6 + 1).toInt() and 0xFF,
+                date = intDate(calendarDatesBuf.getInt(j * 6 + 2)),
+            )
+        }
+        val activeIds = moundcity.transit.core.time.ServiceCalendar.activeServices(date, calendar, exceptions)
+        return (0 until serviceCount).filter { serviceId(it) in activeIds }.toSet()
+    }
+
+    private fun intDate(v: Int): java.time.LocalDate =
+        java.time.LocalDate.of(v / 10000, (v / 100) % 100, v % 100)
+
     // --- strings ---
 
     fun headsign(headsignIdx: Int): String = headsigns[headsignIdx]

@@ -77,9 +77,28 @@ code_blob=struct.pack(f'<{len(stop_ids)}I', *[int(s) for s in stop_ids])
 geo_blob=b''.join(struct.pack('<ii', int(lat_by_id[s][0]*1e6), int(lat_by_id[s][1]*1e6)) for s in stop_ids)
 wb_blob=bytes(int(wb_by_id[s] or 0) for s in stop_ids)
 
+# ---- v2 (Phase 1d): route ids + calendar, so the on-device board can compute
+# active services and join route_ids without re-reading the feed. Mirrored in
+# the Kotlin IndexWriter; the manifest proves agreement.
+cal_rows={r['service_id']: r for r in load('calendar.txt')}
+_DAYS=['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+cal_blob=b''
+for s in svc:
+    r=cal_rows.get(s)
+    if r is None:
+        cal_blob+=struct.pack('<IIB',0,0,0)
+    else:
+        bits=sum(1<<i for i,d in enumerate(_DAYS) if r[d]=='1')
+        cal_blob+=struct.pack('<IIB',int(r['start_date']),int(r['end_date']),bits)
+cd_blob=b''.join(struct.pack('<BBI', svcidx[r['service_id']], int(r['exception_type']), int(r['date']))
+                 for r in load('calendar_dates.txt'))
+routeid_blob=strtab([r['route_id'] for r in routes])
+svcid_blob=strtab(svc)
+
 parts={'departures(min,trip,seq)':dep_blob,'stop_offsets':off_blob,'trip_meta':trip_blob,
        'trip_id_sorted':tid_blob,'stop_names':stopname_blob,'headsigns':head_blob,
-       'route_names':route_blob,'stop_codes':code_blob,'stop_geo':geo_blob,'wheelchair':wb_blob}
+       'route_names':route_blob,'stop_codes':code_blob,'stop_geo':geo_blob,'wheelchair':wb_blob,
+       'route_ids':routeid_blob,'service_ids':svcid_blob,'calendar':cal_blob,'calendar_dates':cd_blob}
 tot=0
 print("\n### ON-DEVICE INDEX")
 for k,v in parts.items():
@@ -139,7 +158,7 @@ if WRITE:
     # order above, then payloads back-to-back. Any change lands in both writers in
     # the same commit.
     payloads = list(parts.values())
-    container = b"MCT1" + struct.pack("<II", 1, len(payloads))
+    container = b"MCT1" + struct.pack("<II", 2, len(payloads))  # v2: 14 sections (Phase 1d)
     container += struct.pack(f"<{len(payloads)}I", *[len(v) for v in payloads])
     container += b"".join(payloads)
     with open(os.path.join(outdir, "index.bin"), "wb") as f:

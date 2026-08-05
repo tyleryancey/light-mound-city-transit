@@ -26,9 +26,10 @@ on 2026-08-05:
 
 ## 1. Index format — container v2
 
-Three sections appended to `IndexContainer.SECTION_ORDER` (13 total); `MCT1`
-version 1 → 2. Old readers refuse on the version check; nothing shipped yet, so
-there is no migration.
+Three sections appended to `IndexContainer.SECTION_ORDER` (17 total, after Phase
+1d's v2 added route_ids/service_ids/calendar/calendar_dates); `MCT1` version
+2 → 3. Old readers refuse on the version check; nothing shipped yet, so there
+is no migration.
 
 | section | encoding |
 |---|---|
