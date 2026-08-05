@@ -116,7 +116,7 @@ doc 01.
 
 **Sizing**
 - Gzipped realtime: Trips 44,206 · Vehicles 4,321 · Alerts 3,715 → **~52 KB per full poll**.
-- On-device index **3,254,937 bytes** (measured, built). Query 0.013 ms in Python.
+- On-device index **3,315,251 bytes** at container v3 (measured 2026-08-05: v1's 3,254,937 + ~1.6 KB calendar/route-id sections (1d) + 58,878 B of shape sections (D12)). Query 0.013 ms in Python.
 
 ---
 

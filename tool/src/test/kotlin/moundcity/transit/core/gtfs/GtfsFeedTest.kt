@@ -28,8 +28,8 @@ class GtfsFeedTest {
             R1,1,Main Street
         """.trimIndent() + "\n",
         "trips.txt" to """
-            route_id,service_id,trip_id,direction_id,trip_headsign
-            R1,S1,T1,0,DOWNTOWN
+            route_id,service_id,trip_id,direction_id,trip_headsign,shape_id
+            R1,S1,T1,0,DOWNTOWN,SH1
         """.trimIndent() + "\n",
         "stop_times.txt" to """
             trip_id,arrival_time,departure_time,stop_id,stop_sequence
@@ -42,6 +42,11 @@ class GtfsFeedTest {
         """.trimIndent() + "\n",
         "calendar_dates.txt" to """
             service_id,exception_type,date
+        """.trimIndent() + "\n",
+        "shapes.txt" to """
+            shape_id,shape_pt_sequence,shape_pt_lat,shape_pt_lon
+            SH1,1,38.60,-90.20
+            SH1,2,38.65,-90.25
         """.trimIndent() + "\n",
     )
 
@@ -108,6 +113,54 @@ class GtfsFeedTest {
         repeat(65536) { i -> sb.append("$i,$i,STOP $i,38.6,-90.2,1\n") }
         val e = assertFailsWith<IllegalStateException> { load(mapOf("stops.txt" to sb.toString())) }
         assertTrue("A14" in e.message!! && "65536" in e.message!!, "message names A14 with the observed count: ${e.message}")
+    }
+
+    @Test
+    fun shapesParseSortedBySequence() {
+        val feed = load()
+        assertEquals(
+            listOf(ShapePoint(38.60, -90.20), ShapePoint(38.65, -90.25)),
+            feed.shapes["SH1"],
+            "SH1 points in sequence order",
+        )
+        assertEquals("SH1", feed.trips.single().shapeId, "trip carries its shape_id")
+    }
+
+    @Test
+    fun a15EveryRouteDirectionPairNeedsAShapedTrip() {
+        val bad = base.getValue("trips.txt").replace(",SH1", ",")
+        val e = assertFailsWith<IllegalStateException> { load(mapOf("trips.txt" to bad)) }
+        assertTrue("A15" in e.message!! && "R1" in e.message!!, "refusal names A15 and the route: ${e.message}")
+    }
+
+    @Test
+    fun a16DanglingShapeRefIsANamedRefusal() {
+        // Review finding: a trip referencing a shape absent from shapes.txt
+        // detonated later as a bare NoSuchElementException in the writer.
+        val bad = base.getValue("trips.txt").replace(",SH1", ",SH9")
+        val e = assertFailsWith<IllegalStateException> { load(mapOf("trips.txt" to bad)) }
+        assertTrue("A16" in e.message!! && "SH9" in e.message!!, "refusal names A16 and the offending id: ${e.message}")
+    }
+
+    @Test
+    fun a17DuplicateShapeSequenceRefuses() {
+        // Review finding: duplicate (shape_id, seq) — invalid GTFS — would sort
+        // differently in the two writers (Kotlin stable-by-seq vs Python tuple
+        // sort) and silently diverge the bytes. Refuse it by name instead.
+        val bad = "shape_id,shape_pt_sequence,shape_pt_lat,shape_pt_lon\n" +
+            "SH1,1,38.60,-90.20\nSH1,1,38.61,-90.21\nSH1,2,38.65,-90.25\n"
+        val e = assertFailsWith<IllegalStateException> { load(mapOf("shapes.txt" to bad)) }
+        assertTrue("A17" in e.message!! && "SH1" in e.message!!, "refusal names A17 and the shape: ${e.message}")
+    }
+
+    @Test
+    fun realFixtureShapesMatchTheMeasuredProfile() {
+        val feed = ZipFile(FixturePaths.gtfsZip).use { zip ->
+            GtfsFeed.load { name -> zip.getInputStream(zip.getEntry(name)).bufferedReader() }
+        }
+        assertEquals(236, feed.shapes.size, "236 shape_ids")
+        assertEquals(104566, feed.shapes.values.sumOf { it.size }, "104,566 shape points")
+        assertEquals(0, feed.trips.count { it.shapeId.isEmpty() }, "every trip is shaped")
     }
 
     @Test

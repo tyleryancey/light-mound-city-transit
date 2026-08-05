@@ -67,7 +67,9 @@ class ScheduleIndex(container: ByteArray) {
             val mid = (lo + hi) ushr 1
             if (minuteAt(start, mid) < fromMinute) lo = mid + 1 else hi = mid
         }
-        val out = ArrayList<DepartureRow>(limit)
+        // capacity from the slice, never the caller's limit — a generous
+        // limit must not drive allocation (found by the multimodal sweep)
+        val out = ArrayList<DepartureRow>(minOf(limit, n - lo))
         var j = lo
         while (j < n && out.size < limit) {
             val row = rowAt(start, j)
@@ -173,6 +175,26 @@ class ScheduleIndex(container: ByteArray) {
 
     private fun intDate(v: Int): java.time.LocalDate =
         java.time.LocalDate.of(v / 10000, (v / 100) % 100, v % 100)
+
+    // --- v3: route shapes (D12) ---
+
+    private val shapeOffsets = buf("shape_offsets")
+    private val shapePts = buf("shape_pts")
+
+    /** Interleaved [latMicro0, lonMicro0, latMicro1, ...] or null when absent. */
+    fun routeShape(routeIdx: Int, directionId: Int): IntArray? {
+        val keys = sections.getValue("shape_keys")
+        for (i in 0 until keys.size / 2) {
+            if ((keys[i * 2].toInt() and 0xFF) == routeIdx && (keys[i * 2 + 1].toInt() and 0xFF) == directionId) {
+                val start = shapeOffsets.getInt(i * 4)
+                val end = shapeOffsets.getInt((i + 1) * 4)
+                val out = IntArray((end - start) / 4)
+                for (j in out.indices) out[j] = shapePts.getInt(start + j * 4)
+                return out
+            }
+        }
+        return null
+    }
 
     // --- strings ---
 

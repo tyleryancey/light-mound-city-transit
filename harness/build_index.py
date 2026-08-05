@@ -95,10 +95,71 @@ cd_blob=b''.join(struct.pack('<BBI', svcidx[r['service_id']], int(r['exception_t
 routeid_blob=strtab([r['route_id'] for r in routes])
 svcid_blob=strtab(svc)
 
+# ---- v3 (D12): representative shape per (route,dir), DP-decimated ----
+# Transcribed operation-for-operation from ShapeSelect.kt; the manifest
+# proves the two agree.
+TOL = 10.0 / 111000.0
+shp = collections.defaultdict(list)
+with open(G+'/shapes.txt', newline='', encoding='utf-8-sig') as f:
+    for r in csv.DictReader(f):
+        shp[r['shape_id']].append((int(r['shape_pt_sequence']), float(r['shape_pt_lat']), float(r['shape_pt_lon'])))
+_seen=set()
+for k, v in shp.items():
+    for sq, _, _ in v:
+        assert (k, sq) not in _seen, f"A17: duplicate shape_pt_sequence {sq} in shape {k} -- refusing to build"
+        _seen.add((k, sq))
+shp = {k: [(la, lo) for _, la, lo in sorted(v)] for k, v in shp.items()}
+_dangling = sorted({t['shape_id'] for t in trips if t['shape_id'] and t['shape_id'] not in shp})
+assert not _dangling, f"A16: {len(_dangling)} shape_id(s) referenced by trips but absent from shapes.txt (first: {_dangling[0]})"
+
+def dp(pts, tol):
+    # Point-to-SEGMENT distance, compared squared -- transcribed from
+    # ShapeSelect.kt (review fix: infinite-line distance collapsed closed
+    # loops and out-and-back shapes; squared form removes sqrt entirely).
+    if len(pts) < 3: return pts
+    keep = [False]*len(pts); keep[0] = keep[-1] = True
+    tol2 = tol*tol
+    stack = [(0, len(pts)-1)]
+    while stack:
+        a, b = stack.pop()
+        ax, ay = pts[a]; bx, by = pts[b]
+        dx, dy = bx-ax, by-ay
+        n2 = dx*dx + dy*dy
+        best, bi = 0.0, -1
+        for i in range(a+1, b):
+            px, py = pts[i]
+            t = 0.0 if n2 == 0.0 else ((px-ax)*dx + (py-ay)*dy) / n2
+            if t < 0.0: t = 0.0
+            if t > 1.0: t = 1.0
+            ex = px - (ax + t*dx); ey = py - (ay + t*dy)
+            d = ex*ex + ey*ey
+            if d > best: best, bi = d, i
+        if best > tol2:
+            keep[bi] = True; stack.append((a, bi)); stack.append((bi, b))
+    return [p for i, p in enumerate(pts) if keep[i]]
+
+use = collections.Counter(t['shape_id'] for t in trips if t['shape_id'])
+groups = collections.defaultdict(list)
+for t in trips:
+    if t['shape_id']: groups[(t['route_id'], int(t['direction_id']))].append(t['shape_id'])
+reps = []
+for (rid, d), sids in groups.items():
+    rep = sorted(set(sids), key=lambda s: (-use[s], s))[0]
+    reps.append((ridx[rid], d, dp(shp[rep], TOL)))
+reps.sort(key=lambda x: (x[0], x[1]))
+key_blob = b''.join(struct.pack('<BB', r, d) for r, d, _ in reps)
+soffs, stotal = [], 0
+for _, _, pts in reps:
+    soffs.append(stotal); stotal += len(pts)*8
+soffs.append(stotal)
+soff_blob = struct.pack(f'<{len(soffs)}I', *soffs)
+pts_blob = b''.join(struct.pack('<ii', int(la*1e6), int(lo*1e6)) for _, _, pts in reps for la, lo in pts)
+
 parts={'departures(min,trip,seq)':dep_blob,'stop_offsets':off_blob,'trip_meta':trip_blob,
        'trip_id_sorted':tid_blob,'stop_names':stopname_blob,'headsigns':head_blob,
        'route_names':route_blob,'stop_codes':code_blob,'stop_geo':geo_blob,'wheelchair':wb_blob,
-       'route_ids':routeid_blob,'service_ids':svcid_blob,'calendar':cal_blob,'calendar_dates':cd_blob}
+       'route_ids':routeid_blob,'service_ids':svcid_blob,'calendar':cal_blob,'calendar_dates':cd_blob,
+       'shape_keys':key_blob,'shape_offsets':soff_blob,'shape_pts':pts_blob}
 tot=0
 print("\n### ON-DEVICE INDEX")
 for k,v in parts.items():
@@ -158,7 +219,7 @@ if WRITE:
     # order above, then payloads back-to-back. Any change lands in both writers in
     # the same commit.
     payloads = list(parts.values())
-    container = b"MCT1" + struct.pack("<II", 2, len(payloads))  # v2: 14 sections (Phase 1d)
+    container = b"MCT1" + struct.pack("<II", 3, len(payloads))  # v3: 17 sections (D12 shapes)
     container += struct.pack(f"<{len(payloads)}I", *[len(v) for v in payloads])
     container += b"".join(payloads)
     with open(os.path.join(outdir, "index.bin"), "wb") as f:

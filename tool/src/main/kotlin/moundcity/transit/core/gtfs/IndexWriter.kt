@@ -33,7 +33,7 @@ class BuiltIndex internal constructor(val sections: LinkedHashMap<String, ByteAr
 
 object IndexContainer {
     val MAGIC = byteArrayOf(0x4D, 0x43, 0x54, 0x31) // "MCT1"
-    const val VERSION = 2
+    const val VERSION = 3
 
     /** Section names in the one true order; the container stores lengths only.
      * v2 (Phase 1d) appended route_ids/service_ids/calendar/calendar_dates —
@@ -43,6 +43,7 @@ object IndexContainer {
         "departures", "stop_offsets", "trip_meta", "trip_id_sorted", "stop_names",
         "headsigns", "route_names", "stop_codes", "stop_geo", "wheelchair",
         "route_ids", "service_ids", "calendar", "calendar_dates",
+        "shape_keys", "shape_offsets", "shape_pts",
     )
 
     fun parse(container: ByteArray): LinkedHashMap<String, ByteArray> {
@@ -185,6 +186,29 @@ object IndexWriter {
             cdBuf.putInt(dateInt(cd.date))
         }
         sections["calendar_dates"] = cdBuf.array()
+
+        // v3 (D12): one decimated representative polyline per route+direction
+        val reps = ShapeSelect.representatives(feed, routeIdx)
+        val keyBuf = ByteBuffer.allocate(reps.size * 2).order(ByteOrder.LITTLE_ENDIAN)
+        val shapeOffsets = IntArray(reps.size + 1)
+        var shapeBytes = 0
+        for ((i, rep) in reps.withIndex()) {
+            keyBuf.put(rep.routeIdx.toByte())
+            keyBuf.put(rep.directionId.toByte())
+            shapeOffsets[i] = shapeBytes
+            shapeBytes += rep.points.size * 8
+        }
+        shapeOffsets[reps.size] = shapeBytes
+        val shapeOffBuf = ByteBuffer.allocate(shapeOffsets.size * 4).order(ByteOrder.LITTLE_ENDIAN)
+        for (o in shapeOffsets) shapeOffBuf.putInt(o)
+        val ptsBuf = ByteBuffer.allocate(shapeBytes).order(ByteOrder.LITTLE_ENDIAN)
+        for (rep in reps) for (pt in rep.points) {
+            ptsBuf.putInt((pt.lat * 1e6).toInt())
+            ptsBuf.putInt((pt.lon * 1e6).toInt())
+        }
+        sections["shape_keys"] = keyBuf.array()
+        sections["shape_offsets"] = shapeOffBuf.array()
+        sections["shape_pts"] = ptsBuf.array()
         return BuiltIndex(sections)
     }
 

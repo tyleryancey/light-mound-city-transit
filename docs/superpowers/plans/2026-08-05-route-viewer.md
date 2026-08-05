@@ -116,7 +116,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Produces: `Trip.shapeId: String` (new last field of the `Trip` data class); `GtfsFeed.shapes: Map<String, List<ShapePoint>>` where `data class ShapePoint(val lat: Double, val lon: Double)` (declared in `GtfsFeed.kt`), points sorted by `shape_pt_sequence`.
 - A15 refusal: `IllegalStateException` whose message contains `A15` and the offending route id.
 
-- [ ] **Step 1: Update the synthetic feeds.** In `GtfsFeedTest.kt`'s `base` map: trips header becomes `route_id,service_id,trip_id,direction_id,trip_headsign,shape_id` and the row `R1,S1,T1,0,DOWNTOWN,SH1`; add entry:
+- [x] **Step 1: Update the synthetic feeds.** In `GtfsFeedTest.kt`'s `base` map: trips header becomes `route_id,service_id,trip_id,direction_id,trip_headsign,shape_id` and the row `R1,S1,T1,0,DOWNTOWN,SH1`; add entry:
 
 ```kotlin
 "shapes.txt" to """
@@ -128,7 +128,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 Apply the same two changes to both inline feeds in `ScheduleIndexTest.kt` (`writerRefusesUnsortedTripIds`: shapes `SH1` rows as above, trips rows gain `,SH1`; `writerRefusesStopSequencePastU16`: likewise).
 
-- [ ] **Step 2: Write the failing tests** (append to `GtfsFeedTest.kt`):
+- [x] **Step 2: Write the failing tests** (append to `GtfsFeedTest.kt`):
 
 ```kotlin
 @Test
@@ -156,8 +156,8 @@ fun realFixtureShapesMatchTheMeasuredProfile() {
 }
 ```
 
-- [ ] **Step 3: Run to verify they fail.** `./gradlew :tool:compileDebugUnitTestKotlin` — expect `Unresolved reference 'ShapePoint'` / no `shapeId` parameter.
-- [ ] **Step 4: Implement.** In `GtfsFeed.kt`: add `val shapeId: String` as the last `Trip` field and read `row["shape_id"]` in the trips loop. Declare `data class ShapePoint(val lat: Double, val lon: Double)` at top level. Add to the class: `val shapes: Map<String, List<ShapePoint>>`. In `load`, after calendar parsing:
+- [x] **Step 3: Run to verify they fail.** `./gradlew :tool:compileDebugUnitTestKotlin` — expect `Unresolved reference 'ShapePoint'` / no `shapeId` parameter.
+- [x] **Step 4: Implement.** In `GtfsFeed.kt`: add `val shapeId: String` as the last `Trip` field and read `row["shape_id"]` in the trips loop. Declare `data class ShapePoint(val lat: Double, val lon: Double)` at top level. Add to the class: `val shapes: Map<String, List<ShapePoint>>`. In `load`, after calendar parsing:
 
 ```kotlin
 val shapeAccum = HashMap<String, MutableList<Pair<Int, ShapePoint>>>()
@@ -177,8 +177,8 @@ check(unshaped.isEmpty()) {
 
 Pass `shapes = shapes` through the constructor (new `val shapes: Map<String, List<ShapePoint>>` parameter).
 
-- [ ] **Step 5: Run the full suite; expect all green** (existing fixture tests unaffected — the real feed has the column). `./gradlew :tool:testDebugUnitTest`
-- [ ] **Step 6: Commit.**
+- [x] **Step 5: Run the full suite; expect all green** (existing fixture tests unaffected — the real feed has the column). `./gradlew :tool:testDebugUnitTest`
+- [x] **Step 6: Commit.**
 
 ```bash
 git add tool/src && git commit -m "1.23a: parse trips.shape_id + shapes.txt; assertion A15 refuses unshaped route+direction pairs
@@ -201,7 +201,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
   - `const val TOLERANCE_DEG: Double = 10.0 / 111_000.0`
 - Task 4 consumes `representatives(...)` verbatim; `build_index.py` mirrors both functions.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
 
 ```kotlin
 package moundcity.transit.core.gtfs
@@ -271,8 +271,8 @@ class ShapeSelectTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure.** Expect `Unresolved reference 'ShapeSelect'`.
-- [ ] **Step 3: Implement `ShapeSelect.kt`.** The DP body below is the LOCKSTEP REFERENCE — `build_index.py` (Task 4) transcribes it operation-for-operation:
+- [x] **Step 2: Run to verify failure.** Expect `Unresolved reference 'ShapeSelect'`.
+- [x] **Step 3: Implement `ShapeSelect.kt`.** The DP body below is the LOCKSTEP REFERENCE — `build_index.py` (Task 4) transcribes it operation-for-operation:
 
 ```kotlin
 package moundcity.transit.core.gtfs
@@ -338,8 +338,8 @@ object ShapeSelect {
 
 Replace the pseudocode per its NOTE before compiling (the block comment stays as documentation of the rule). Delete the `compareToNatural` line entirely — it does not compile.
 
-- [ ] **Step 4: Run the tests; expect green.** `./gradlew :tool:testDebugUnitTest --tests "moundcity.transit.core.gtfs.ShapeSelectTest"`
-- [ ] **Step 5: Commit.**
+- [x] **Step 4: Run the tests; expect green.** `./gradlew :tool:testDebugUnitTest --tests "moundcity.transit.core.gtfs.ShapeSelectTest"`
+- [x] **Step 5: Commit.**
 
 ```bash
 git add tool/src && git commit -m "1.23b: representative-shape selection + Douglas-Peucker (lockstep reference)
@@ -362,7 +362,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Consumes: `ShapeSelect.representatives(feed, routeIdxById)` from Task 3.
 - Produces: `IndexContainer.VERSION = 3`; `SECTION_ORDER` ending `…, "calendar_dates", "shape_keys", "shape_offsets", "shape_pts"`; `ScheduleIndex.routeShape(routeIdx: Int, directionId: Int): IntArray?` returning interleaved `[latMicro0, lonMicro0, latMicro1, …]` or null when the pair is absent.
 
-- [ ] **Step 1: Write the failing tests.** In `IndexWriterTest.kt`, the manifest tests already compare *whatever* sections exist — they will fail against the OLD manifest once the writer changes, and pass after re-anchoring; that is the RED→GREEN cycle for this task. Add to `ScheduleIndexTest.kt`:
+- [x] **Step 1: Write the failing tests.** In `IndexWriterTest.kt`, the manifest tests already compare *whatever* sections exist — they will fail against the OLD manifest once the writer changes, and pass after re-anchoring; that is the RED→GREEN cycle for this task. Add to `ScheduleIndexTest.kt`:
 
 ```kotlin
 @Test
@@ -380,8 +380,8 @@ fun routeShapeAbsentPairIsNull() {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure.** `routeShape` unresolved.
-- [ ] **Step 3: Kotlin writer.** In `IndexContainer`: `VERSION = 3`; append `"shape_keys", "shape_offsets", "shape_pts"` to `SECTION_ORDER`. In `IndexWriter.build`, after the `wheelchair` section:
+- [x] **Step 2: Run to verify failure.** `routeShape` unresolved.
+- [x] **Step 3: Kotlin writer.** In `IndexContainer`: `VERSION = 3`; append `"shape_keys", "shape_offsets", "shape_pts"` to `SECTION_ORDER`. In `IndexWriter.build`, after the `wheelchair` section:
 
 ```kotlin
 val reps = ShapeSelect.representatives(feed, routeIdx)
@@ -406,7 +406,7 @@ sections["shape_offsets"] = shapeOffBuf.array()
 sections["shape_pts"] = ptsBuf.array()
 ```
 
-- [ ] **Step 4: Reader.** In `ScheduleIndex`, add fields `shapeKeys`/`shapeOffsets`/`shapePts` via `buf(...)` like the others, and:
+- [x] **Step 4: Reader.** In `ScheduleIndex`, add fields `shapeKeys`/`shapeOffsets`/`shapePts` via `buf(...)` like the others, and:
 
 ```kotlin
 fun routeShape(routeIdx: Int, directionId: Int): IntArray? {
@@ -424,7 +424,7 @@ fun routeShape(routeIdx: Int, directionId: Int): IntArray? {
 }
 ```
 
-- [ ] **Step 5: Python mirror.** In `build_index.py`, after `wb_blob`, transcribe selection + DP (operation-for-operation from `ShapeSelect.kt` — same variable roles, same `dx*(ay-py)-dy*(ax-px)` cross product, same `n == 0.0 → 1e-12` guard, tolerance `10.0/111000.0`, iterative stack with `pop()` from the end):
+- [x] **Step 5: Python mirror.** In `build_index.py`, after `wb_blob`, transcribe selection + DP (operation-for-operation from `ShapeSelect.kt` — same variable roles, same `dx*(ay-py)-dy*(ax-px)` cross product, same `n == 0.0 → 1e-12` guard, tolerance `10.0/111000.0`, iterative stack with `pop()` from the end):
 
 ```python
 # ---- shapes (D12): representative per (route,dir), DP-decimated ----
@@ -478,7 +478,7 @@ parts['shape_pts'] = pts_blob
 
 And the container line becomes version 3: `container = b"MCT1" + struct.pack("<II", 3, len(payloads))`. Also update Kotlin's `check(buf.int == VERSION)` — it already reads the constant.
 
-- [ ] **Step 6: Regenerate the anchor and run everything.**
+- [x] **Step 6: Regenerate the anchor and run everything.**
 
 ```bash
 cd harness && python3 build_index.py fixtures --write && cd ..
@@ -487,8 +487,8 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17) && ./gradlew :tool:testDebugUni
 
 Expected: manifest now lists 17 sections + index.bin; ALL tests green including `everySectionMatchesThePythonManifestByteForByte` — if `shape_pts` hashes differ, the two DP transcriptions diverged; diff the section byte lengths first (a length match with hash mismatch means float-order divergence; a length mismatch means keep/drop divergence).
 
-- [ ] **Step 7: Record the measured v2 size.** Read the new `index.bin` bytes from the manifest; update the CLAUDE.md sizing line and doc 04's risk row placeholder (`~3.32 MB` → the measured number).
-- [ ] **Step 8: Commit (everything together — the same-commit rule).**
+- [x] **Step 7: Record the measured v2 size.** Read the new `index.bin` bytes from the manifest; update the CLAUDE.md sizing line and doc 04's risk row placeholder (`~3.32 MB` → the measured number).
+- [x] **Step 8: Commit (everything together — the same-commit rule).**
 
 ```bash
 git add tool/src harness CLAUDE.md docs && git commit -m "1.23c: container v2 with shape sections, byte-identical in both writers
@@ -529,7 +529,7 @@ object Approach {
 
 Text forms (exact): `"about N stops away"` (N≥2), `"about 1 stop away · X.X mi"`, `"approaching · X.X mi"`, `"passed"`. Distance is equirectangular: `dLat` and `dLon·cos(vehicle lat)` in degrees, `× 69.0` miles per degree (folk constant, 0.04% off 68.97 — irrelevant at one decimal under 2 mi), one decimal via `"%.1f".format(mi)`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
 
 ```kotlin
 package moundcity.transit.core.query
@@ -623,8 +623,8 @@ class ApproachTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure.** Expect `Unresolved reference 'Approach'`.
-- [ ] **Step 3: Implement `Approach.kt`:**
+- [x] **Step 2: Run to verify failure.** Expect `Unresolved reference 'Approach'`.
+- [x] **Step 3: Implement `Approach.kt`:**
 
 ```kotlin
 package moundcity.transit.core.query
@@ -700,9 +700,9 @@ object Approach {
 }
 ```
 
-- [ ] **Step 4: Run the tests; expect green.** If `oneStopBackCarriesDistance` fails on the exact mi string, print the computed value — the synthetic grid gives 0.01° × 69 = 0.69 → "0.7"; do not loosen the assertion, fix the constant use.
-- [ ] **Step 5: Run the FULL suite.** `./gradlew :tool:testDebugUnitTest` — everything green.
-- [ ] **Step 6: Commit.**
+- [x] **Step 4: Run the tests; expect green.** If `oneStopBackCarriesDistance` fails on the exact mi string, print the computed value — the synthetic grid gives 0.01° × 69 = 0.69 → "0.7"; do not loosen the assertion, fix the constant use.
+- [x] **Step 5: Run the FULL suite.** `./gradlew :tool:testDebugUnitTest` — everything green.
+- [x] **Step 6: Commit.**
 
 ```bash
 git add tool/src && git commit -m "1.24: Approach.estimate — about-N-stops-back with N<=1 distance rider
@@ -719,9 +719,9 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 **Files:**
 - Modify: `docs/04-BUILD-PLAN.md` (tick 1.23/1.24 with results)
 
-- [ ] **Step 1: Tick 1.23 and 1.24** in doc 04 with the measured results (v2 container size, section bytes, golden values), same style as earlier ticks.
-- [ ] **Step 2: Full suite one last time.** `./gradlew :tool:testDebugUnitTest` green; `cd harness && python3 build_index.py fixtures --write` idempotent (manifest unchanged on re-run).
-- [ ] **Step 3: Commit, push, PR.**
+- [x] **Step 1: Tick 1.23 and 1.24** in doc 04 with the measured results (v2 container size, section bytes, golden values), same style as earlier ticks.
+- [x] **Step 2: Full suite one last time.** `./gradlew :tool:testDebugUnitTest` green; `cd harness && python3 build_index.py fixtures --write` idempotent (manifest unchanged on re-run).
+- [x] **Step 3: Commit, push, PR.**
 
 ```bash
 git add docs && git commit -m "docs: tick 1.23/1.24 with measured results
@@ -731,7 +731,7 @@ git push -u origin docs/route-viewer-spec
 gh pr create -R tyleryancey/light-mound-city-transit --title "D12: route viewer data + N-stops-back (spec, plan, 1.23, 1.24)" --fill
 ```
 
-- [ ] **Step 4: Watch checks, merge with `--merge`** (never squash), pull main.
+- [x] **Step 4: Watch checks, merge with `--merge`** (never squash), pull main.
 
 ---
 
