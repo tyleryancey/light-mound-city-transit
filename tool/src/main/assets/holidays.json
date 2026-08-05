@@ -1,0 +1,183 @@
+{
+  "generated_by": "stl 0.1.0",
+  "holidays": [
+    {
+      "bus_rail_differ": true,
+      "date": "2026-01-01",
+      "name": "New Year's Day",
+      "services": {
+        "bus": {
+          "published": "Sunday",
+          "service_type": "sunday"
+        },
+        "rail": {
+          "published": "Weekend",
+          "service_type": "weekend"
+        }
+      },
+      "weekday": "Thursday"
+    },
+    {
+      "bus_rail_differ": false,
+      "date": "2026-01-19",
+      "name": "Martin Luther King Jr. Day",
+      "services": {
+        "bus": {
+          "published": "Weekday",
+          "service_type": "weekday"
+        },
+        "rail": {
+          "published": "Weekday",
+          "service_type": "weekday"
+        }
+      },
+      "weekday": "Monday"
+    },
+    {
+      "bus_rail_differ": false,
+      "date": "2026-02-16",
+      "name": "Presidents' Day",
+      "services": {
+        "bus": {
+          "published": "Weekday",
+          "service_type": "weekday"
+        },
+        "rail": {
+          "published": "Weekday",
+          "service_type": "weekday"
+        }
+      },
+      "weekday": "Monday"
+    },
+    {
+      "bus_rail_differ": true,
+      "date": "2026-05-25",
+      "name": "Memorial Day",
+      "services": {
+        "bus": {
+          "published": "Sunday",
+          "service_type": "sunday"
+        },
+        "rail": {
+          "published": "Weekend",
+          "service_type": "weekend"
+        }
+      },
+      "weekday": "Monday"
+    },
+    {
+      "bus_rail_differ": false,
+      "date": "2026-06-19",
+      "name": "Juneteenth",
+      "services": {
+        "bus": {
+          "published": "Weekday",
+          "service_type": "weekday"
+        },
+        "rail": {
+          "published": "Weekday",
+          "service_type": "weekday"
+        }
+      },
+      "weekday": "Friday"
+    },
+    {
+      "bus_rail_differ": true,
+      "date": "2026-07-03",
+      "name": "Independence Day (Observed)",
+      "services": {
+        "bus": {
+          "published": "Sunday",
+          "service_type": "sunday"
+        },
+        "rail": {
+          "published": "Weekend",
+          "service_type": "weekend"
+        }
+      },
+      "weekday": "Friday"
+    },
+    {
+      "bus_rail_differ": true,
+      "date": "2026-09-07",
+      "name": "Labor Day",
+      "services": {
+        "bus": {
+          "published": "Sunday",
+          "service_type": "sunday"
+        },
+        "rail": {
+          "published": "Weekend",
+          "service_type": "weekend"
+        }
+      },
+      "weekday": "Monday"
+    },
+    {
+      "bus_rail_differ": false,
+      "date": "2026-11-11",
+      "name": "Veterans Day",
+      "services": {
+        "bus": {
+          "published": "Weekday",
+          "service_type": "weekday"
+        },
+        "rail": {
+          "published": "Weekday",
+          "service_type": "weekday"
+        }
+      },
+      "weekday": "Wednesday"
+    },
+    {
+      "bus_rail_differ": true,
+      "date": "2026-11-26",
+      "name": "Thanksgiving Day",
+      "services": {
+        "bus": {
+          "published": "Sunday",
+          "service_type": "sunday"
+        },
+        "rail": {
+          "published": "Weekend",
+          "service_type": "weekend"
+        }
+      },
+      "weekday": "Thursday"
+    },
+    {
+      "bus_rail_differ": true,
+      "date": "2026-12-25",
+      "name": "Christmas Day",
+      "services": {
+        "bus": {
+          "published": "Sunday",
+          "service_type": "sunday"
+        },
+        "rail": {
+          "published": "Weekend",
+          "service_type": "weekend"
+        }
+      },
+      "weekday": "Friday"
+    }
+  ],
+  "modes": [
+    "bus",
+    "rail"
+  ],
+  "note": "Each holiday carries one entry PER MODE. Bus and rail are never merged: 'Sunday service' (bus) and 'Weekend service' (rail) are different timetables published in different columns.",
+  "service_types": [
+    "holiday",
+    "modified",
+    "no_service",
+    "reduced",
+    "regular",
+    "saturday",
+    "sunday",
+    "weekday",
+    "weekend"
+  ],
+  "source_url": "https://www.metrostlouis.org/holiday-schedules/",
+  "year": 2026
+}

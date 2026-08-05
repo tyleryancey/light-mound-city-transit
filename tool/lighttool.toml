@@ -2,7 +2,7 @@
 id            = "moundcity.transit"
 label         = "Mound City Transit"
 versionCode   = 1
-versionName   = "0.1.0"
-permissions   = []
+versionName   = "1.0.0"
+permissions   = ["android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE"]
 serverPackage = "com.lightos"
 # serverPackage = "com.thelightphone.sdk.emulator"

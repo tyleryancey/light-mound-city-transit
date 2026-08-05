@@ -224,6 +224,12 @@ Two things this card must carry:
   of paper transfers."
 - The disagreements found between Metro's and SCCTD's published tables are noted
   rather than silently reconciled.
+- *Decided 2026-08-05 (Phase 2 review): the card renders `fares.json` rows (the
+  scraped table, byte-pinned to the `stl_bundle_fares` artifact) **plus curated
+  copy** for what the table cannot carry — children 4-and-under free / 5–12 half,
+  seniors 65+ half with permit, the SCCTD $3.00 2-hour pass, the migration caveat,
+  and the SCCTD disagreements — sourced from this section with its own review
+  date. The pipeline stays an honest table-scraper; prose stays curated-and-dated.*
 
 **Payment & passes** — Ticket Vending Machines at all rail stations and transit
 centres; the Transit app and Ride On app; the reloadable Ride On card; exact cash in
