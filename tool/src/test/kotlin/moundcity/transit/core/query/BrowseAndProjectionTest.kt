@@ -42,6 +42,15 @@ class BrowseAndProjectionTest {
     }
 
     @Test
+    fun routeStopsListsTheLongestTripsSequence() {
+        val blue = index.routeIndexOf("19731B")!!
+        val stops = BrowseCatalog.routeStops(index, blue, direction = 0)
+        assertTrue(stops.size >= 10, "a rail line has a real stop sequence; got ${stops.size}")
+        assertTrue(stops.all { index.stopName(it).endsWith("METROLINK STATION") }, "all rail stations")
+        assertEquals(stops.map { it }.distinct(), stops, "no duplicate stops in the display list")
+    }
+
+    @Test
     fun projectionFitsAndPreservesAspect() {
         // Two points 0.02° apart in lat only, canvas 1000×1000 pad 100:
         // the long axis spans the padded range; the flat axis centers.

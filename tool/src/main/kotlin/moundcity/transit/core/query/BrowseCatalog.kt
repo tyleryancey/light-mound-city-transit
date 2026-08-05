@@ -50,6 +50,21 @@ object BrowseCatalog {
         )
     }
 
+    /** The route's stop sequence for a direction: its longest trip's stops
+     * (doc 02 §3.4 — each route opens its stop list by direction). */
+    fun routeStops(index: ScheduleIndex, routeIdx: Int, direction: Int): List<Int> {
+        var bestTrip = -1
+        var bestSize = -1
+        for (t in 0 until index.tripCount) {
+            if (index.tripRoute(t) == routeIdx && index.tripDirection(t) == direction) {
+                val n = index.tripStops(t, fromSeq = 0).size
+                if (n > bestSize) { bestSize = n; bestTrip = t }
+            }
+        }
+        if (bestTrip < 0) return emptyList()
+        return index.tripStops(bestTrip, fromSeq = 0).map { it.stopIdx }.distinct()
+    }
+
     private fun stopsServedBy(index: ScheduleIndex, pred: (String) -> Boolean): List<Int> {
         val all = (0 until index.serviceCount).toSet()
         return (0 until index.stopCount).filter { stop ->
