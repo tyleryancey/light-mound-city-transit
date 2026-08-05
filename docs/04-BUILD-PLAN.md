@@ -96,16 +96,20 @@ Everything here is `core/`, pure JVM, tested. No Compose, no Gradle Android buil
 needed to run the tests.
 
 ### 1a — time
-- [ ] **1.1** `ServiceDay.serviceDayStart(date, zone)` — subtraction on an `Instant`,
-      not a wall-clock value.
-- [ ] **1.2** `ServiceDay.resolve(date, gtfsSeconds, zone)` for times ≥ 24:00:00.
-- [ ] **1.3** Tests: 2026-03-08 starts 03-07 23:00 CST; 2026-11-01 starts 11-01
+- [x] **1.1** `ServiceDay.serviceDayStart(date, zone)` — subtraction on an `Instant`,
+      not a wall-clock value. *Done 2026-08-05, `core/time/ServiceDay.kt`.*
+- [x] **1.2** `ServiceDay.resolve(date, gtfsSeconds, zone)` for times ≥ 24:00:00.
+      *Done 2026-08-05.*
+- [x] **1.3** Tests: 2026-03-08 starts 03-07 23:00 CST; 2026-11-01 starts 11-01
       01:00 CDT; `24:12:00` on each; an ordinary day equals local midnight; the
       observed max `25:37:00`. **These dates are outside the feed window and are
-      synthetic by necessity.**
-- [ ] **1.4** `activeServices(date)` — `calendar` weekday bits **union**
+      synthetic by necessity.** *Done 2026-08-05: 9 tests green; oracle cross-check
+      via `stl_gtfs_service_day` agrees (00:12 local ↔ 24:12:00 @ 87,120 s).*
+- [x] **1.4** `activeServices(date)` — `calendar` weekday bits **union**
       `calendar_dates` type 1, **minus** type 2. Test: `319-T2` on 2026-08-08 is
-      active despite having no `calendar.txt` row; `325-T2` is not.
+      active despite having no `calendar.txt` row; `325-T2` is not. *Done 2026-08-05,
+      `core/time/ServiceCalendar.kt`: 5 tests on the real fixture calendar;
+      `stl_gtfs_calendar` oracle agrees ({319-T2, 325-B2} on 2026-08-08).*
 
 ### 1b — static parse and index
 - [ ] **1.5** GTFS CSV reader. **Parse by header name** — `stop_times.txt` puts
