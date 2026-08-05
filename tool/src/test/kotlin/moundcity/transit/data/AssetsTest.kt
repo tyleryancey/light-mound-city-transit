@@ -14,9 +14,11 @@ import kotlin.test.assertTrue
  * and the pipeline's exact bytes (fares/holidays sha256s are the
  * stl_bundle_* artifacts' own published hashes).
  */
-class AssetsTest {
-
-    private val assetsDir: File by lazy {
+object AssetPaths {
+    // The COMMITTED assets dir — the only index bytes CI has on disk (the
+    // .bin files under harness/fixtures/index are gitignored; found the hard
+    // way when CI failed 8 IndexStore tests that passed locally).
+    val assetsDir: File by lazy {
         var dir: File? = File("").absoluteFile
         while (dir != null) {
             val candidate = File(dir, "tool/src/main/assets")
@@ -25,6 +27,11 @@ class AssetsTest {
         }
         error("tool/src/main/assets not found above ${File("").absolutePath}")
     }
+}
+
+class AssetsTest {
+
+    private val assetsDir: File get() = AssetPaths.assetsDir
 
     private fun sha256(f: File): String =
         MessageDigest.getInstance("SHA-256").digest(f.readBytes()).joinToString("") { "%02x".format(it) }

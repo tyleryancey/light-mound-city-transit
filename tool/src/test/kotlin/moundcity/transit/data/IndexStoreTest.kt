@@ -1,7 +1,6 @@
 package moundcity.transit.data
 
 import java.io.File
-import moundcity.transit.core.gtfs.FixturePaths
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -14,7 +13,9 @@ import kotlin.test.assertTrue
 class IndexStoreTest {
 
     private val goodBytes: ByteArray by lazy {
-        FixturePaths.fixturesDir.resolve("index/index.bin").readBytes()
+        // The committed asset (hash-pinned to the anchor by AssetsTest) — NOT
+        // harness/fixtures/index/index.bin, which is gitignored and absent in CI.
+        File(AssetPaths.assetsDir, "index.bin").readBytes()
     }
 
     private fun tempDir(): File = File.createTempFile("idx", "").let {
