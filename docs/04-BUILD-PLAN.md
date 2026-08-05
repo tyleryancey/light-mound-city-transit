@@ -208,24 +208,32 @@ needed to run the tests.
       and stay bare; 14 Illinois routes (19855–19868) detected via route_ids.*
 
 ### 1e — route viewer data (D12)
-- [ ] **1.23** Shapes into the index (D12): parse `trips.shape_id` + `shapes.txt`;
+- [x] **1.23** Shapes into the index (D12): parse `trips.shape_id` + `shapes.txt`;
       assertion **A15** (every route+direction pair has ≥1 shaped trip; observed
       120/120) refuses the build; representative shape per pair (most-used, tie →
       lexicographically smallest id); Douglas-Peucker at 10 m; three new sections
-      `shape_keys`/`shape_offsets`/`shape_pts`; container **v2**; byte-diff
-      re-anchored with the Python mirror in the same commit. Sections ≈ 60 KB.
-- [ ] **1.24** `core/query/Approach.kt` — "about N stops back" from tripStops +
+      `shape_keys`/`shape_offsets`/`shape_pts`; container **v3** (v2 was 1d's
+      calendar/route_ids); byte-diff re-anchored with the Python mirror in the
+      same commit. *Done 2026-08-05: 58,832 B of polylines, DP lockstep held on
+      the first run, 17 sections hash-identical.*
+- [x] **1.24** `core/query/Approach.kt` — "about N stops back" from tripStops +
       stop_geo (never shapes): nearest trip-stop by equirectangular distance
       (cos of vehicle latitude), N by sequence position. Phrasings: N≥2 "about N
       stops away"; N=1 "about 1 stop away · X.X mi"; N=0 "approaching · X.X mi"
       (miles — user decision 2026-08-05); N<0 "passed". Loop ties resolve to the
       first occurrence (conservative overestimate). Synthetic geometry tests + one
       real-fixture golden. Plan: `docs/superpowers/plans/2026-08-05-route-viewer.md`.
+      *Done 2026-08-05: grid cases, loop tie, and the planning-time Python golden
+      (trip 3407211, N=4).*
 
 **Exit gate:** `./gradlew :tool:testDebugUnitTest` green, every case above covered,
 and the Kotlin engine agreeing with the Python oracle on every `stl_oracle_cases`
 case. **No UI code exists yet.** If a milestone slips, it slips here — not by
 skipping ahead.
+*Met 2026-08-05: 111 tests green; 16/19 oracle cases pinned (sunday board,
+past-expiry-empty, and a zero-multimodal tripwire closed the last gaps — the
+sweep also caught a reader allocation defect); the 3 holiday cases are
+untestable until the 2026-08-31 pick and belong to M4/Phase 4.7. Still no UI.*
 
 ---
 
