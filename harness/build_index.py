@@ -53,8 +53,12 @@ off_blob=struct.pack(f'<{len(offsets)}I', *offsets)
 heads=sorted(set(t['trip_headsign'] for t in trips)); hidx={h:i for i,h in enumerate(heads)}
 trip_blob=b''.join(struct.pack('<BBBH', ridx[t['route_id']], svcidx[t['service_id']],
                                int(t['direction_id']), hidx[t['trip_headsign']]) for t in trips)
-# trip_id lookup (RT join): sorted u32 trip_ids for binary search
-tid_blob=struct.pack(f'<{len(trip_ids)}I', *sorted(int(t) for t in trip_ids))
+# trip_id lookup (RT join): sorted u32 trip_ids for binary search.
+# tripIndexOf equates sorted position with file-order trip index, so trips.txt
+# must arrive strictly numerically sorted — mirrored in the Kotlin IndexWriter.
+_ti=[int(t) for t in trip_ids]
+assert all(a<b for a,b in zip(_ti,_ti[1:])), "trips.txt not strictly sorted by numeric trip_id -- RT join would mis-join"
+tid_blob=struct.pack(f'<{len(trip_ids)}I', *_ti)
 
 # ---- strings ----
 def strtab(items):
@@ -130,6 +134,17 @@ if WRITE:
         with open(os.path.join(outdir, name + ".bin"), "wb") as f:
             f.write(v)
         manifest[name] = {"bytes": len(v), "sha256": hashlib.sha256(v).hexdigest()}
+    # Single-file container, mirroring the Kotlin IndexWriter (task 1.7's layout):
+    # "MCT1", u32 version=1, u32 sectionCount, u32 length per section in the fixed
+    # order above, then payloads back-to-back. Any change lands in both writers in
+    # the same commit.
+    payloads = list(parts.values())
+    container = b"MCT1" + struct.pack("<II", 1, len(payloads))
+    container += struct.pack(f"<{len(payloads)}I", *[len(v) for v in payloads])
+    container += b"".join(payloads)
+    with open(os.path.join(outdir, "index.bin"), "wb") as f:
+        f.write(container)
+    manifest["index.bin"] = {"bytes": len(container), "sha256": hashlib.sha256(container).hexdigest()}
     with open(os.path.join(outdir, "manifest.json"), "w") as f:
         json.dump(manifest, f, indent=2, sort_keys=True)
-    print(f"\n### WROTE {outdir}/ — {len(parts)} sections + manifest.json (byte-diff anchor for task 1.9)")
+    print(f"\n### WROTE {outdir}/ — {len(parts)} sections + index.bin container + manifest.json (byte-diff anchor for task 1.9)")

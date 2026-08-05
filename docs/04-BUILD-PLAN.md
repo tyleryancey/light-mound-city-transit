@@ -116,22 +116,34 @@ needed to run the tests.
       `stl_gtfs_calendar` oracle agrees ({319-T2, 325-B2} on 2026-08-08).*
 
 ### 1b — static parse and index
-- [ ] **1.5** GTFS CSV reader. **Parse by header name** — `stop_times.txt` puts
-      `trip_id` third.
-- [ ] **1.6** Build-time assertions A1, A2, A6, A7, A13, A14 (doc 01 §9). Each
+- [x] **1.5** GTFS CSV reader. **Parse by header name** — `stop_times.txt` puts
+      `trip_id` third. *Done 2026-08-05, `core/gtfs/GtfsCsv.kt`: RFC 4180 + BOM
+      strip; 7 tests incl. real-fixture header order.*
+- [x] **1.6** Build-time assertions A1, A2, A6, A7, A13, A14 (doc 01 §9). Each
       reports its **observed value**. A failure refuses the build; it does not warn.
-- [ ] **1.7** `IndexWriter` — the columnar format in doc 03 §3.
-- [ ] **1.8** `ScheduleIndex` reader: `resolveStop`, `departures`, `tripStops`,
-      `tripIndexOf`.
-- [ ] **1.9** Byte-for-byte diff of the Kotlin writer's output against
+      *Done 2026-08-05, `core/gtfs/GtfsFeed.kt`: every assertion has a synthetic
+      failing test; fixture observed values 5,118 / 62 / 9,577 / 489,011 / 1,537 min
+      / 8 services. A13 uses the oracle's 28:00-exclusive bound.*
+- [x] **1.7** `IndexWriter` — the columnar format in doc 03 §3. *Done 2026-08-05.
+      Container decided: `MCT1` magic, u32 version=1, u32 count, u32 lengths in
+      fixed section order, payloads back-to-back (52 B header).*
+- [x] **1.8** `ScheduleIndex` reader: `resolveStop`, `departures`, `tripStops`,
+      `tripIndexOf`. *Done 2026-08-05: golden board = the Python reference's own
+      query output for stop 10624 @ 11:50 weekday. New invariant enforced in BOTH
+      writers: trips.txt must be strictly numerically sorted, because
+      `tripIndexOf` equates sorted position with file-order trip index.*
+- [x] **1.9** Byte-for-byte diff of the Kotlin writer's output against
       `harness/build_index.py --write` (per-section `.bin` files + a sha256
       `manifest.json`). Same input, identical hashes per section. This is the
       strongest single test in the project. The single-file container layout
       (TOC/header around the sections) is 1.7's decision — mirror it back into the
-      Python builder in the same commit so the anchor stays in lockstep.
-- [ ] **1.10** Expiry: `max(calendar.end_date, calendar_dates.date)`. There is **no
+      Python builder in the same commit so the anchor stays in lockstep. *Done
+      2026-08-05: all 10 sections hash-identical, and the `index.bin` container too
+      (3,254,989 B from both writers).*
+- [x] **1.10** Expiry: `max(calendar.end_date, calendar_dates.date)`. There is **no
       `feed_info.txt`** — a reader that looks for one and finds nothing must not
-      conclude "no expiry".
+      conclude "no expiry". *Done 2026-08-05: fixture → 2026-08-30; empty calendar
+      data throws.*
 
 ### 1c — realtime
 - [ ] **1.11** Varint / wire reader with the six fixtures from doc 01 §5b. Case one
