@@ -178,16 +178,32 @@ needed to run the tests.
       protobuf), and no fabricated fixes for vehicle-less entities.*
 
 ### 1d — the join
-- [ ] **1.18** `merge(index, rtSnapshot)` → `List<Departure>` with live/scheduled,
-      delay, canceled, vehicle.
-- [ ] **1.19** Golden test: reproduce the exact departure board for stop 10624 at
-      2026-08-03 11:49:12 CDT from the captured fixtures.
-- [ ] **1.20** Assert `predicted == scheduled + delay` on 8,450 of 8,453 samples, and
-      that the 3 exceptions are the known loop-route stops.
-- [ ] **1.21** Rail: assert zero realtime for `19731B/R` and `19870B/R`, and that
-      every rail departure is emitted as `scheduled`.
-- [ ] **1.22** MO/IL disambiguation: assert the eight colliding `route_short_name`s
-      resolve to distinct routes and never render bare.
+- [x] **1.18** `merge(index, rtSnapshot)` → `List<Departure>` with live/scheduled,
+      delay, canceled, vehicle. *Done 2026-08-05, `core/query/DepartureBoard.kt`:
+      two-service-date union sorted by absolute instant; canceled shown-struck;
+      absent delay on a live trip = Live(0) per A5. Required container **v2**
+      (route_ids/service_ids/calendar/calendar_dates — the on-device board cannot
+      compute active services from the v1 sections; doc 03 §3's table omitted
+      them). Both writers, manifest re-anchored.*
+- [x] **1.19** Golden test: reproduce the exact departure board for stop 10624 at
+      2026-08-03 11:49:12 CDT from the captured fixtures. *Done 2026-08-05: rail
+      golden all-scheduled even with RT supplied; plus a live golden (stop 7855,
+      8 rows, delays 0/420/480/180/540/60/120/60, vehicles attached), a canceled
+      golden (trip 3404706 @ stop 7653), and midnight-union goldens both ways
+      (25:33 sorts before 04:26; at 00:05 the whole board is yesterday's).*
+- [x] **1.20** Assert `predicted == scheduled + delay` on 8,450 of 8,453 samples, and
+      that the 3 exceptions are the known loop-route stops. *Done 2026-08-05 —
+      stronger than planned: occurrence-aware matching gives **7,084/7,084 deduped**
+      agreement (8,453 = raw count); the 3 exceptions were doc 01's own naive-check
+      artifact, as it suspected. CLAUDE.md correction 10.*
+- [x] **1.21** Rail: assert zero realtime for `19731B/R` and `19870B/R`, and that
+      every rail departure is emitted as `scheduled`. *Done 2026-08-05: rail board
+      rows all Scheduled with the full RT snapshot supplied; no vehicle attaches.*
+- [x] **1.22** MO/IL disambiguation: assert the eight colliding `route_short_name`s
+      resolve to distinct routes and never render bare. *Done 2026-08-05,
+      `core/query/RouteLabels.kt`: all 8 bus pairs render "N MO"/"N IL"; the
+      MLB/MLR pick-twins (the other two of 10 raw collisions) are the same lines
+      and stay bare; 14 Illinois routes (19855–19868) detected via route_ids.*
 
 ### 1e — route viewer data (D12)
 - [ ] **1.23** Shapes into the index (D12): parse `trips.shape_id` + `shapes.txt`;
