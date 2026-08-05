@@ -59,6 +59,7 @@ kotlin {
 
 dependencies {
     implementation(project(":sdk:client"))
+    implementation("androidx.datastore:datastore-preferences-core:1.1.1")
     testImplementation(libs.kotlin.test)
     ksp(libs.androidx.room.compiler)
 }
