@@ -130,6 +130,17 @@ if WRITE:
         with open(os.path.join(outdir, name + ".bin"), "wb") as f:
             f.write(v)
         manifest[name] = {"bytes": len(v), "sha256": hashlib.sha256(v).hexdigest()}
+    # Single-file container, mirroring the Kotlin IndexWriter (task 1.7's layout):
+    # "MCT1", u32 version=1, u32 sectionCount, u32 length per section in the fixed
+    # order above, then payloads back-to-back. Any change lands in both writers in
+    # the same commit.
+    payloads = list(parts.values())
+    container = b"MCT1" + struct.pack("<II", 1, len(payloads))
+    container += struct.pack(f"<{len(payloads)}I", *[len(v) for v in payloads])
+    container += b"".join(payloads)
+    with open(os.path.join(outdir, "index.bin"), "wb") as f:
+        f.write(container)
+    manifest["index.bin"] = {"bytes": len(container), "sha256": hashlib.sha256(container).hexdigest()}
     with open(os.path.join(outdir, "manifest.json"), "w") as f:
         json.dump(manifest, f, indent=2, sort_keys=True)
-    print(f"\n### WROTE {outdir}/ — {len(parts)} sections + manifest.json (byte-diff anchor for task 1.9)")
+    print(f"\n### WROTE {outdir}/ — {len(parts)} sections + index.bin container + manifest.json (byte-diff anchor for task 1.9)")
