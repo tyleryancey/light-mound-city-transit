@@ -67,7 +67,9 @@ class ScheduleIndex(container: ByteArray) {
             val mid = (lo + hi) ushr 1
             if (minuteAt(start, mid) < fromMinute) lo = mid + 1 else hi = mid
         }
-        val out = ArrayList<DepartureRow>(limit)
+        // capacity from the slice, never the caller's limit — a generous
+        // limit must not drive allocation (found by the multimodal sweep)
+        val out = ArrayList<DepartureRow>(minOf(limit, n - lo))
         var j = lo
         while (j < n && out.size < limit) {
             val row = rowAt(start, j)
