@@ -75,10 +75,18 @@ object GtfsCsv {
                 }
             } else {
                 when (ch) {
-                    '"' -> if (field.isEmpty()) inQuotes = true else field.append(ch)
+                    '"' -> if (field.isEmpty()) { inQuotes = true; sawAnything = true } else field.append(ch)
                     ',' -> { endField(); sawAnything = true }
-                    '\r' -> { /* consumed; the LF that follows ends the record */ }
-                    '\n' -> endRecord()
+                    '\r' -> {
+                        // A bare CR terminates the record (as in Python's csv
+                        // module); a following LF is the same terminator, not a
+                        // blank line.
+                        if (sawAnything || cells.isNotEmpty() || field.isNotEmpty()) endRecord()
+                        val next = reader.read()
+                        c = if (next != -1 && next.toChar() == '\n') reader.read() else next
+                        continue
+                    }
+                    '\n' -> if (sawAnything || cells.isNotEmpty() || field.isNotEmpty()) endRecord()
                     else -> { field.append(ch); sawAnything = true }
                 }
             }

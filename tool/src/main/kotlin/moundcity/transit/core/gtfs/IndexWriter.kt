@@ -79,6 +79,13 @@ object IndexWriter {
         val buckets = Array(stopIdsSorted.size) { LongArrayList() }
         for (i in 0 until feed.stopTimeCount) {
             val pos = stopPos.getValue(feed.stStopId[i])
+            // seq must fit u16 BEFORE packing: a masked overflow would silently
+            // corrupt both the sort order and trip attribution, where the Python
+            // mirror's struct.pack('<H') refuses. Minute is bounded by A13,
+            // tripIdx by A14; stop_sequence has no assertion of its own.
+            check(feed.stSeq[i] <= 0xFFFF) {
+                "stop_sequence ${feed.stSeq[i]} exceeds u16 at stop_times row $i — refusing to build"
+            }
             val packed = (feed.stMinute[i].toLong() shl 32) or
                 (feed.stTripIdx[i].toLong() shl 16) or feed.stSeq[i].toLong()
             buckets[pos].add(packed)

@@ -93,6 +93,24 @@ class ScheduleIndexTest {
     }
 
     @Test
+    fun writerRefusesStopSequencePastU16() {
+        // Python's struct.pack('<H') refuses seq > 65535; the packed-long sort here
+        // would instead mask it and silently corrupt ordering AND trip attribution.
+        // Review finding (Phase 1b): guard before packing, matching Python's refusal.
+        val files = mapOf(
+            "stops.txt" to "stop_id,stop_code,stop_name,stop_lat,stop_lon,wheelchair_boarding\n100,100,A,38.6,-90.2,1\n",
+            "routes.txt" to "route_id,route_short_name,route_long_name\nR1,1,Main\n",
+            "trips.txt" to "route_id,service_id,trip_id,direction_id,trip_headsign\nR1,S1,10,0,OUT\n",
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n10,08:00:00,08:00:00,100,70000\n",
+            "calendar.txt" to "service_id,start_date,end_date,monday,tuesday,wednesday,thursday,friday,saturday,sunday\nS1,20260730,20260830,1,1,1,1,1,0,0\n",
+            "calendar_dates.txt" to "service_id,exception_type,date\n",
+        )
+        val feed = GtfsFeed.load { name -> StringReader(files.getValue(name)) }
+        val e = assertFailsWith<IllegalStateException> { IndexWriter.build(feed) }
+        assertTrue("70000" in e.message!!, "refusal quotes the observed stop_sequence: ${e.message}")
+    }
+
+    @Test
     fun writerRefusesUnsortedTripIds() {
         // The RT join equates sorted-array position with file-order tripIdx, which
         // only holds because trips.txt arrives numerically sorted. A feed that

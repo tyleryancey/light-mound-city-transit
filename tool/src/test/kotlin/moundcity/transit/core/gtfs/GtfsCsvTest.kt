@@ -55,6 +55,22 @@ class GtfsCsvTest {
     }
 
     @Test
+    fun bareCarriageReturnTerminatesTheRecordLikePythonsCsvModule() {
+        // Review finding (Phase 1b): a lone CR is a row terminator to Python's csv
+        // module; swallowing it silently would diverge the port from the oracle.
+        val out = mutableListOf<Pair<String, String>>()
+        GtfsCsv.forEachRow(StringReader("a,b\r1,2\r3,4")) { row -> out.add(row["a"] to row["b"]) }
+        assertEquals(listOf("1" to "2", "3" to "4"), out, "classic-Mac CR line endings parse as two records")
+    }
+
+    @Test
+    fun blankLinesAreSkippedLikePythonsCsvModule() {
+        val out = mutableListOf<Pair<String, String>>()
+        GtfsCsv.forEachRow(StringReader("a,b\n1,2\n\n3,4\n")) { row -> out.add(row["a"] to row["b"]) }
+        assertEquals(listOf("1" to "2", "3" to "4"), out, "a blank line yields no record, matching csv.DictReader")
+    }
+
+    @Test
     fun unknownColumnThrows() {
         assertFailsWith<IllegalArgumentException>("asking for a column the file lacks must fail loudly") {
             GtfsCsv.forEachRow(StringReader("a,b\n1,2\n")) { row -> row["nope"] }
