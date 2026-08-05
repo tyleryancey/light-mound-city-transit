@@ -1,6 +1,11 @@
 package moundcity.transit.data
 
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import kotlinx.coroutines.flow.first
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,17 +25,20 @@ import kotlin.test.assertTrue
  */
 class PrefsTest {
 
-    private fun <T> withPrefs(block: suspend (Prefs) -> T): T {
+    private fun <T> withStoreAndPrefs(block: suspend (DataStore<Preferences>, Prefs) -> T): T {
         val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         val file = File.createTempFile("prefs", ".preferences_pb").also { it.delete() }
         try {
             val store = PreferenceDataStoreFactory.create(scope = scope) { file }
-            return runBlocking { block(Prefs(store)) }
+            return runBlocking { block(store, Prefs(store)) }
         } finally {
             scope.cancel()
             file.delete()
         }
     }
+
+    private fun <T> withPrefs(block: suspend (Prefs) -> T): T =
+        withStoreAndPrefs { _, prefs -> block(prefs) }
 
     @Test
     fun savedStopsKeepInsertionOrderAndCapAtTwelve() = withPrefs { prefs ->
@@ -56,6 +64,21 @@ class PrefsTest {
         assertNull(prefs.activeIndexName(), "asset is the implicit default")
         prefs.setActiveIndexName("index-20260812.bin")
         assertEquals("index-20260812.bin", prefs.activeIndexName(), "active index name round-trips")
+    }
+
+    @Test
+    fun corruptedSavedStopsTokenIsDroppedAndHealedOnNextWrite() = withStoreAndPrefs { store, prefs ->
+        // Review finding (Phase 2): a single bad token bricked the whole class
+        // with NumberFormatException — remove could never repair what it could
+        // not parse. Bad tokens drop; the next write persists a clean string.
+        store.edit { it[stringPreferencesKey("saved_stops")] = "10624,1x27,127" }
+        assertEquals(listOf(10624, 127), prefs.savedStops(), "bad token dropped, not thrown")
+        assertTrue(prefs.addSavedStop(999), "list still writable")
+        assertEquals(
+            "10624,127,999",
+            store.data.first()[stringPreferencesKey("saved_stops")],
+            "the next write persists a clean string — self-heal complete",
+        )
     }
 
     @Test

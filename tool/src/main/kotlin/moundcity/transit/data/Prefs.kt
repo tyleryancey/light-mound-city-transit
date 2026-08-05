@@ -59,6 +59,9 @@ class Prefs(private val store: DataStore<Preferences>) {
     suspend fun expiryWarningSeen(): Boolean = store.data.first()[expiryWarnedKey] ?: false
     suspend fun markExpiryWarningSeen() = store.edit { it[expiryWarnedKey] = true }
 
+    /** Bad tokens drop rather than throw (review finding, Phase 2): a single
+     * corrupted byte must never brick the class that holds all mutable state —
+     * the next write persists a clean string, completing the self-heal. */
     private fun parseStops(raw: String?): List<Int> =
-        raw?.takeIf { it.isNotEmpty() }?.split(',')?.map { it.toInt() } ?: emptyList()
+        raw?.split(',')?.mapNotNull { it.toIntOrNull() } ?: emptyList()
 }

@@ -286,7 +286,9 @@ Each renders a view model backed by `core`. No logic moves into `ui/`.
 - [ ] **3.6** Alerts: filtered to saved-stop routes by default, full description on
       detail. No `url`. Active period shown as `Effective from …`.
 - [ ] **3.7** Reference: fares, payment, accessibility, contacts, services — each
-      with its capture date. Tappable or read-only per M6.
+      with its capture date. Tappable or read-only per M6 (settled: read-only).
+      *Fares card = `fares.json` rows + curated copy per doc 02 §3.6's 2026-08-05
+      decision — never hand-edit the byte-pinned asset.*
 - [ ] **3.8** Data-age states: fresh / expiring (≤7 days) / **expired replaces the
       list**. Live data ages to `scheduled` at 15 minutes.
 - [ ] **3.9** Monochrome audit: grep for `Color(` in `ui/`. Zero hits.
