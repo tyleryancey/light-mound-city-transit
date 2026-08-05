@@ -341,7 +341,7 @@ Each renders a view model backed by `core`. No logic moves into `ui/`.
 | Fare migration phase 3 on 2026-08-17 | — | fares are dated and bundled, so this is a content refresh, not a code change |
 | New pick 2026-08-31 | rail `route_id`s change | 1.22 and 4.4 exist for exactly this |
 | Category question at review | — | doc 05, written on day one, not at submission |
-| Index growth from shapes (D12) | container v2 exceeds ~3.35 MB | DP tolerance is the dial — 25 m halves the section; re-anchor and remeasure |
+| Index growth from shapes (D12) | container exceeds ~3.35 MB (measured v3: 3,315,251 B) | DP tolerance is the dial — 25 m halves the section; re-anchor and remeasure |
 
 ---
 

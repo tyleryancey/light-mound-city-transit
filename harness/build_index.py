@@ -103,24 +103,38 @@ shp = collections.defaultdict(list)
 with open(G+'/shapes.txt', newline='', encoding='utf-8-sig') as f:
     for r in csv.DictReader(f):
         shp[r['shape_id']].append((int(r['shape_pt_sequence']), float(r['shape_pt_lat']), float(r['shape_pt_lon'])))
+_seen=set()
+for k, v in shp.items():
+    for sq, _, _ in v:
+        assert (k, sq) not in _seen, f"A17: duplicate shape_pt_sequence {sq} in shape {k} -- refusing to build"
+        _seen.add((k, sq))
 shp = {k: [(la, lo) for _, la, lo in sorted(v)] for k, v in shp.items()}
+_dangling = sorted({t['shape_id'] for t in trips if t['shape_id'] and t['shape_id'] not in shp})
+assert not _dangling, f"A16: {len(_dangling)} shape_id(s) referenced by trips but absent from shapes.txt (first: {_dangling[0]})"
 
 def dp(pts, tol):
+    # Point-to-SEGMENT distance, compared squared -- transcribed from
+    # ShapeSelect.kt (review fix: infinite-line distance collapsed closed
+    # loops and out-and-back shapes; squared form removes sqrt entirely).
     if len(pts) < 3: return pts
     keep = [False]*len(pts); keep[0] = keep[-1] = True
+    tol2 = tol*tol
     stack = [(0, len(pts)-1)]
     while stack:
         a, b = stack.pop()
         ax, ay = pts[a]; bx, by = pts[b]
         dx, dy = bx-ax, by-ay
-        n = (dx*dx + dy*dy)**0.5
-        if n == 0.0: n = 1e-12
+        n2 = dx*dx + dy*dy
         best, bi = 0.0, -1
         for i in range(a+1, b):
             px, py = pts[i]
-            d = abs(dx*(ay-py) - dy*(ax-px)) / n
+            t = 0.0 if n2 == 0.0 else ((px-ax)*dx + (py-ay)*dy) / n2
+            if t < 0.0: t = 0.0
+            if t > 1.0: t = 1.0
+            ex = px - (ax + t*dx); ey = py - (ay + t*dy)
+            d = ex*ex + ey*ey
             if d > best: best, bi = d, i
-        if best > tol:
+        if best > tol2:
             keep[bi] = True; stack.append((a, bi)); stack.append((bi, b))
     return [p for i, p in enumerate(pts) if keep[i]]
 

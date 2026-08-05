@@ -68,6 +68,20 @@ class ApproachTest {
     }
 
     @Test
+    fun distanceStringIsLocaleStable() {
+        // Review finding: no-locale %.1f follows the device locale — a
+        // comma-decimal device rendered "0,7 mi".
+        val prev = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.GERMANY)
+            val e = est(targetSeq = 3, vLat = lat(1), vLon = lon(1)) as ApproachEstimate.StopsAway
+            assertEquals("about 1 stop away · 0.7 mi", e.text(), "the decimal separator must not follow the device locale")
+        } finally {
+            java.util.Locale.setDefault(prev)
+        }
+    }
+
+    @Test
     fun realFixtureGoldenTrip3407211() {
         // Golden computed independently in Python during planning (2026-08-05):
         // vehicle (38.734341, -90.354401) on trip 3407211; nearest stop 9208 at

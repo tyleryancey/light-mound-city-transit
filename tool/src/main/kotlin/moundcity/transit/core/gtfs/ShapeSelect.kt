@@ -32,10 +32,16 @@ object ShapeSelect {
     }
 
     fun douglasPeucker(points: List<ShapePoint>, tolDeg: Double): List<ShapePoint> {
+        // Point-to-SEGMENT distance, compared squared (review finding, Phase 1
+        // close-out): distance-to-infinite-line collapsed closed loops
+        // (first==last: dx=dy=0 makes every numerator 0) and out-and-back
+        // shapes (interior points collinear with the endpoint line). Squared
+        // form also removes sqrt from the lockstep entirely.
         if (points.size < 3) return points
         val keep = BooleanArray(points.size)
         keep[0] = true
         keep[points.size - 1] = true
+        val tol2 = tolDeg * tolDeg
         val stack = ArrayDeque<Pair<Int, Int>>()
         stack.addLast(0 to points.size - 1)
         while (stack.isNotEmpty()) {
@@ -43,16 +49,19 @@ object ShapeSelect {
             val ax = points[a].lat; val ay = points[a].lon
             val bx = points[b].lat; val by = points[b].lon
             val dx = bx - ax; val dy = by - ay
-            var n = Math.sqrt(dx * dx + dy * dy)
-            if (n == 0.0) n = 1e-12
+            val n2 = dx * dx + dy * dy
             var best = 0.0
             var bi = -1
             for (i in a + 1 until b) {
                 val px = points[i].lat; val py = points[i].lon
-                val d = Math.abs(dx * (ay - py) - dy * (ax - px)) / n
+                var t = if (n2 == 0.0) 0.0 else ((px - ax) * dx + (py - ay) * dy) / n2
+                if (t < 0.0) t = 0.0
+                if (t > 1.0) t = 1.0
+                val ex = px - (ax + t * dx); val ey = py - (ay + t * dy)
+                val d = ex * ex + ey * ey
                 if (d > best) { best = d; bi = i }
             }
-            if (best > tolDeg) {
+            if (best > tol2) {
                 keep[bi] = true
                 stack.addLast(a to bi)
                 stack.addLast(bi to b)

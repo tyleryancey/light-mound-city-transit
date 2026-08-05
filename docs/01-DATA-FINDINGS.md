@@ -443,6 +443,9 @@ beside the threshold.
 | A12 | RT feed carries no extension fields (1000–1999) | 0 unknown fields | decoder surface |
 | A13 | time-of-service-day < 1,536 min | max 1,537 → **fits u16, not u11** | index encoding |
 | A14 | ≤ 65,535 stops and ≤ 65,535 trips | 5,118 / 9,577 | `u16` indices |
+| A15 | every (route, direction) pair has ≥1 shaped trip *(added Phase 1e, D12)* | 120/120 | route viewer polylines |
+| A16 | every trip's `shape_id` resolves in `shapes.txt` *(added Phase 1 close-out review)* | 0 dangling | shape selection |
+| A17 | no duplicate `(shape_id, shape_pt_sequence)` *(added Phase 1 close-out review; invalid GTFS and the two writers would tie-break differently)* | 0 duplicates | byte-lockstep |
 
 A14 has the least headroom in relative terms (trips at 15% of `u16`) but the most in
 absolute terms. Assert it anyway — an index build that silently truncates is worse

@@ -39,6 +39,27 @@ class ShapeSelectTest {
     }
 
     @Test
+    fun closedLoopSurvivesDecimation() {
+        // Review finding (Phase 1 close-out): first==last made dx=dy=0, every
+        // interior distance-to-INFINITE-LINE read 0.0, and a 2 km circulator
+        // collapsed to its start point — silently, in BOTH writers.
+        val ring = (0 until 100).map {
+            val th = 2 * Math.PI * it / 100
+            p(38.6 + 0.02 * Math.cos(th), -90.2 + 0.02 * Math.sin(th))
+        }
+        val loop = ring + ring.first() // exact first==last, the trigger
+        val out = ShapeSelect.douglasPeucker(loop, ShapeSelect.TOLERANCE_DEG)
+        kotlin.test.assertTrue(out.distinct().size >= 4, "a closed loop keeps its extent, never collapses to its start point; got ${out.distinct().size} distinct points")
+    }
+
+    @Test
+    fun outAndBackKeepsTheTurnaround() {
+        val path = (0..19).map { p(38.6 + 0.001 * it, -90.2) } + (18 downTo 1).map { p(38.6 + 0.001 * it, -90.2) }
+        val out = ShapeSelect.douglasPeucker(path, ShapeSelect.TOLERANCE_DEG)
+        kotlin.test.assertTrue(out.maxOf { it.lat } > 38.618, "the turnaround survives a straight-street out-and-back; got max lat ${out.maxOf { it.lat }}")
+    }
+
+    @Test
     fun mostUsedShapeWinsAndTiesBreakToSmallestId() {
         val files = mapOf(
             "stops.txt" to "stop_id,stop_code,stop_name,stop_lat,stop_lon,wheelchair_boarding\n100,100,A,38.6,-90.2,1\n",

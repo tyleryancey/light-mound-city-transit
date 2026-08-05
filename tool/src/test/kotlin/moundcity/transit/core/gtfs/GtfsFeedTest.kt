@@ -134,6 +134,26 @@ class GtfsFeedTest {
     }
 
     @Test
+    fun a16DanglingShapeRefIsANamedRefusal() {
+        // Review finding: a trip referencing a shape absent from shapes.txt
+        // detonated later as a bare NoSuchElementException in the writer.
+        val bad = base.getValue("trips.txt").replace(",SH1", ",SH9")
+        val e = assertFailsWith<IllegalStateException> { load(mapOf("trips.txt" to bad)) }
+        assertTrue("A16" in e.message!! && "SH9" in e.message!!, "refusal names A16 and the offending id: ${e.message}")
+    }
+
+    @Test
+    fun a17DuplicateShapeSequenceRefuses() {
+        // Review finding: duplicate (shape_id, seq) — invalid GTFS — would sort
+        // differently in the two writers (Kotlin stable-by-seq vs Python tuple
+        // sort) and silently diverge the bytes. Refuse it by name instead.
+        val bad = "shape_id,shape_pt_sequence,shape_pt_lat,shape_pt_lon\n" +
+            "SH1,1,38.60,-90.20\nSH1,1,38.61,-90.21\nSH1,2,38.65,-90.25\n"
+        val e = assertFailsWith<IllegalStateException> { load(mapOf("shapes.txt" to bad)) }
+        assertTrue("A17" in e.message!! && "SH1" in e.message!!, "refusal names A17 and the shape: ${e.message}")
+    }
+
+    @Test
     fun realFixtureShapesMatchTheMeasuredProfile() {
         val feed = ZipFile(FixturePaths.gtfsZip).use { zip ->
             GtfsFeed.load { name -> zip.getInputStream(zip.getEntry(name)).bufferedReader() }

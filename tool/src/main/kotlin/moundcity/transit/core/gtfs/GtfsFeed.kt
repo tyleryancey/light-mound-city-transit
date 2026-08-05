@@ -182,7 +182,21 @@ class GtfsFeed private constructor(
                     )
                 }
             }
+            for ((sid, pts) in shapeAccum) {
+                val dupSeq = pts.groupingBy { it.first }.eachCount().filterValues { it > 1 }
+                check(dupSeq.isEmpty()) {
+                    "A17: duplicate shape_pt_sequence ${dupSeq.keys.first()} in shape $sid — refusing to build"
+                }
+            }
             val shapes = shapeAccum.mapValues { (_, v) -> v.sortedBy { it.first }.map { it.second } }
+            val dangling = trips.asSequence()
+                .map { it.shapeId }
+                .filter { it.isNotEmpty() && it !in shapes }
+                .distinct().sorted().toList()
+            check(dangling.isEmpty()) {
+                "A16: ${dangling.size} shape_id(s) referenced by trips but absent from shapes.txt " +
+                    "(first: ${dangling.first()}) — refusing to build"
+            }
             val unshaped = trips.groupBy { it.routeId to it.directionId }
                 .filterValues { group -> group.none { it.shapeId.isNotEmpty() } }
             check(unshaped.isEmpty()) {
