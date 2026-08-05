@@ -1,0 +1,42 @@
+{
+  "departures": {
+    "bytes": 2934066,
+    "sha256": "966cd75c89a3015cae1f066a13d087ea2d49e38f3dfe75909845280bf6d58c65"
+  },
+  "headsigns": {
+    "bytes": 4522,
+    "sha256": "94bdb5a8492ed4f1fd84b9122e2595d16fea3f150f7378b11ac584f97ffc960a"
+  },
+  "route_names": {
+    "bytes": 1182,
+    "sha256": "d11abfec3ef85ad8f5641cf69f94fcd71db93b35cb95a2349ecd828afc7c23c9"
+  },
+  "stop_codes": {
+    "bytes": 20472,
+    "sha256": "938ddd648f5dc37f450154933224c5450d4734ecdb16fc3b01685f45c90cf92b"
+  },
+  "stop_geo": {
+    "bytes": 40944,
+    "sha256": "8f1872fa56c057a7866ad57013d953dae801cea223178d94b96ab5c30c88d682"
+  },
+  "stop_names": {
+    "bytes": 141964,
+    "sha256": "7d33df77cb78dc2c9cd1893f6ed58beff072a5bbba5b26ae12013580be98bea9"
+  },
+  "stop_offsets": {
+    "bytes": 20476,
+    "sha256": "c50e5acc823dd699bd171b8ea98b11df733e49422b89adf0adcb3965fd1422c1"
+  },
+  "trip_id_sorted": {
+    "bytes": 38308,
+    "sha256": "34855ab85b1ccca62cdd40c27605e45b4fcfadf2dbee2d769d4dd66e2bc18e33"
+  },
+  "trip_meta": {
+    "bytes": 47885,
+    "sha256": "be25af709796cbda8df98665e24dcd1573f3ea2118fe3b20fe3543608debea10"
+  },
+  "wheelchair": {
+    "bytes": 5118,
+    "sha256": "35b9071ac4df65f01a4074d6921e38c49900883a1874849ca88cf7dca6ac7378"
+  }
+}
