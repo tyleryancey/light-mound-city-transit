@@ -29,7 +29,12 @@ object DataAge {
         val expiry = index.expiryDate()
         if (today.isAfter(expiry)) return "Schedule expired $expiry"
         val days = java.time.temporal.ChronoUnit.DAYS.between(today, expiry)
-        return "Schedule ${index.feedStartDate()} · expires in $days days"
+        val tail = when (days) {
+            0L -> "expires today"
+            1L -> "expires in 1 day"
+            else -> "expires in $days days"
+        }
+        return "Schedule ${index.feedStartDate()} · $tail"
     }
 
     fun liveLine(nowEpoch: Long, headerTs: Long): String {
@@ -103,6 +108,12 @@ object StopRoutes {
 object AlertMatch {
 
     data class Matched(val header: String, val description: String, val routeLabels: List<String>, val alert: RtAlert)
+
+    /** Home's badge source. No saved stops = zero matches — an empty route
+     *  union must never fall into the null show-everything sentinel. */
+    fun forSavedStops(alerts: RtAlerts, index: ScheduleIndex, savedStopIdxs: List<Int>): List<Matched> =
+        if (savedStopIdxs.isEmpty()) emptyList()
+        else forRoutes(alerts, index, savedStopIdxs.flatMap { StopRoutes.routesServing(index, it) }.toSet())
 
     /** null routeFilter = all alerts; otherwise only those naming a filtered route. */
     fun forRoutes(alerts: RtAlerts, index: ScheduleIndex, routeFilter: Set<Int>?): List<Matched> =

@@ -42,6 +42,20 @@ class ScreenStatesTest {
     }
 
     @Test
+    fun scheduleLineSpeaksSingularAndToday() {
+        assertEquals(
+            "Schedule 2026-07-30 · expires in 1 day",
+            DataAge.scheduleLine(index, LocalDate.of(2026, 8, 29)),
+            "one day left is singular (review finding 10)",
+        )
+        assertEquals(
+            "Schedule 2026-07-30 · expires today",
+            DataAge.scheduleLine(index, LocalDate.of(2026, 8, 30)),
+            "the expiry day itself reads 'today', never 'in 0 days'",
+        )
+    }
+
+    @Test
     fun liveAgeLineAndStaleness() {
         assertEquals("Live 41s ago", DataAge.liveLine(nowEpoch = 1000L + 41, headerTs = 1000L), "doc 02 §3.1")
         assertEquals("Live 3m ago", DataAge.liveLine(nowEpoch = 1000L + 200, headerTs = 1000L), "minutes past 60s")
@@ -99,6 +113,22 @@ class ScreenStatesTest {
         val mine = AlertMatch.forRoutes(alerts, index, routes)
         assertTrue(mine.size < all.size, "saved-stop filtering narrows; got ${mine.size}")
         assertTrue(all.all { it.header.isNotEmpty() }, "header text always says what happened")
+    }
+
+    @Test
+    fun homeAlertCountIsZeroWhenNothingIsSaved() {
+        val alerts = QueryTestData.rtAlerts
+        assertEquals(
+            0,
+            AlertMatch.forSavedStops(alerts, index, emptyList()).size,
+            "zero saved stops must never read as 'affect your stops' (review finding 1)",
+        )
+        val stop = index.resolveStop(10624)!!
+        assertEquals(
+            AlertMatch.forRoutes(alerts, index, StopRoutes.routesServing(index, stop)).size,
+            AlertMatch.forSavedStops(alerts, index, listOf(stop)).size,
+            "with saved stops the badge is the route-union filter, unchanged",
+        )
     }
 
     @Test

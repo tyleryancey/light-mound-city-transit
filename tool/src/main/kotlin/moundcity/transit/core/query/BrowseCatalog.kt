@@ -15,11 +15,9 @@ object BrowseCatalog {
     data class RailLine(val label: String, val routeIdxs: List<Int>)
     data class RouteGroups(val missouri: List<BusRoute>, val illinois: List<BusRoute>, val rail: List<RailLine>)
 
-    private val RAIL_IDS = setOf("19731B", "19731R", "19870B", "19870R")
-
     /** Stops served by rail — each station is a single stop, both directions. */
     fun railStations(index: ScheduleIndex): List<Station> =
-        stopsServedBy(index) { routeId -> routeId in RAIL_IDS }
+        stopsServedBy(index) { r -> RouteLabels.isRail(index, r) }
             .map { Station(index.stopName(it), it) }
             .sortedBy { it.name }
 
@@ -36,10 +34,9 @@ object BrowseCatalog {
         val il = mutableListOf<BusRoute>()
         val railByLabel = LinkedHashMap<String, MutableList<Int>>()
         for (r in 0 until index.routeCount) {
-            val id = index.routeId(r)
             when {
-                id in RAIL_IDS -> railByLabel.getOrPut(index.routeShortName(r)) { mutableListOf() }.add(r)
-                RouteLabels.isIllinois(id) -> il.add(BusRoute(RouteLabels.displayShortName(index, r), r))
+                RouteLabels.isRail(index, r) -> railByLabel.getOrPut(index.routeShortName(r)) { mutableListOf() }.add(r)
+                RouteLabels.isIllinois(index.routeId(r)) -> il.add(BusRoute(RouteLabels.displayShortName(index, r), r))
                 else -> mo.add(BusRoute(RouteLabels.displayShortName(index, r), r))
             }
         }
@@ -51,25 +48,33 @@ object BrowseCatalog {
     }
 
     /** The route's stop sequence for a direction: its longest trip's stops
-     * (doc 02 §3.4 — each route opens its stop list by direction). */
+     * (doc 02 §3.4 — each route opens its stop list by direction). Row counts
+     * come from one pass over the departures section; tripStops() is itself a
+     * full scan, so calling it per candidate trip would be quadratic. */
     fun routeStops(index: ScheduleIndex, routeIdx: Int, direction: Int): List<Int> {
-        var bestTrip = -1
-        var bestSize = -1
-        for (t in 0 until index.tripCount) {
-            if (index.tripRoute(t) == routeIdx && index.tripDirection(t) == direction) {
-                val n = index.tripStops(t, fromSeq = 0).size
-                if (n > bestSize) { bestSize = n; bestTrip = t }
+        val all = (0 until index.serviceCount).toSet()
+        val counts = IntArray(index.tripCount)
+        for (stop in 0 until index.stopCount) {
+            for (row in index.departures(stop, 0, all, limit = Int.MAX_VALUE)) {
+                if (index.tripRoute(row.tripIdx) == routeIdx && index.tripDirection(row.tripIdx) == direction) {
+                    counts[row.tripIdx]++
+                }
             }
+        }
+        var bestTrip = -1
+        var bestSize = 0
+        for (t in 0 until index.tripCount) {
+            if (counts[t] > bestSize) { bestSize = counts[t]; bestTrip = t }
         }
         if (bestTrip < 0) return emptyList()
         return index.tripStops(bestTrip, fromSeq = 0).map { it.stopIdx }.distinct()
     }
 
-    private fun stopsServedBy(index: ScheduleIndex, pred: (String) -> Boolean): List<Int> {
+    private fun stopsServedBy(index: ScheduleIndex, pred: (Int) -> Boolean): List<Int> {
         val all = (0 until index.serviceCount).toSet()
         return (0 until index.stopCount).filter { stop ->
             index.departures(stop, 0, all, limit = Int.MAX_VALUE)
-                .any { pred(index.routeId(index.tripRoute(it.tripIdx))) }
+                .any { pred(index.tripRoute(it.tripIdx)) }
         }
     }
 }
