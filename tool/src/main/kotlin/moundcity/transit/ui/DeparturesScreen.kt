@@ -29,6 +29,7 @@ class DeparturesViewModel(private val stop: Int) : LightViewModel<Unit>() {
 
     val rows = MutableStateFlow<List<Row>>(emptyList())
     val alertBanner = MutableStateFlow<String?>(null)
+    val alertRoutes = MutableStateFlow<IntArray?>(null)
     val expired = MutableStateFlow(false)
     val saved = MutableStateFlow(false)
 
@@ -67,8 +68,13 @@ class DeparturesViewModel(private val stop: Int) : LightViewModel<Unit>() {
             }
             val snapshot = AppGraph.snapshot
             alertBanner.value = snapshot?.let {
-                val n = AlertMatch.forRoutes(it.alerts, index, StopRoutes.routesServing(index, stop)).size
-                if (n > 0) "$n alert${if (n == 1) "" else "s"} affect this stop →" else null
+                val routes = StopRoutes.routesServing(index, stop)
+                alertRoutes.value = routes.toIntArray()
+                when (val n = AlertMatch.forRoutes(it.alerts, index, routes).size) {
+                    0 -> null
+                    1 -> "1 alert affects this stop →"
+                    else -> "$n alerts affect this stop →"
+                }
             }
             saved.value = AppGraph.prefs?.savedStops()?.contains(index.stopCode(stop)) == true
         }
@@ -117,7 +123,10 @@ class DeparturesScreen(sealedActivity: SealedLightActivity, private val stop: In
                     )
                 }
                 if (banner != null) {
-                    item { MctRow(primary = banner!!, onTap = { navigateTo(::AlertsScreen) }) }
+                    item {
+                        // The banner counts this stop's routes — the list it opens filters the same way (finding 2).
+                        MctRow(primary = banner!!, onTap = { navigateTo({ sa -> AlertsScreen(sa, viewModel.alertRoutes.value) }) })
+                    }
                 }
                 if (expired) {
                     // D9: expiry REPLACES the list — a greyed-out time is still a time

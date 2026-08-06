@@ -17,11 +17,12 @@ import kotlinx.coroutines.launch
 import moundcity.transit.core.query.AlertMatch
 import moundcity.transit.core.query.StopRoutes
 
-class AlertsViewModel : LightViewModel<Unit>() {
+class AlertsViewModel(private val routeFilter: IntArray?) : LightViewModel<Unit>() {
 
     val alerts = MutableStateFlow<List<AlertMatch.Matched>>(emptyList())
     val showAll = MutableStateFlow(false)
     val status = MutableStateFlow<String?>(null)
+    val filterLabel = MutableStateFlow("")
 
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
@@ -44,34 +45,49 @@ class AlertsViewModel : LightViewModel<Unit>() {
             }
             status.value = null
             val index = AppGraph.index
-            val filter = if (showAll.value) null else {
+            val savedRoutes = if (routeFilter != null) null else {
                 AppGraph.prefs?.savedStops().orEmpty()
                     .mapNotNull { index.resolveStop(it) }
                     .flatMap { StopRoutes.routesServing(index, it) }
-                    .toSet().ifEmpty { null }
+                    .toSet()
+            }
+            // No saved stops shows all — but says so, never "your stops" (finding 1).
+            val filter = when {
+                showAll.value -> null
+                routeFilter != null -> routeFilter.toSet()
+                savedRoutes.isNullOrEmpty() -> null
+                else -> savedRoutes
+            }
+            filterLabel.value = when {
+                routeFilter != null && showAll.value -> "Showing all alerts — tap for this stop"
+                routeFilter != null -> "Showing this stop — tap for all"
+                showAll.value -> "Showing all alerts — tap for your stops"
+                savedRoutes.isNullOrEmpty() -> "No saved stops — showing all"
+                else -> "Showing your stops — tap for all"
             }
             alerts.value = AlertMatch.forRoutes(snapshot.alerts, index, filter)
         }
     }
 }
 
-/** Doc 02 §3.5: filtered to saved-stop routes by default; full text on detail. */
-class AlertsScreen(sealedActivity: SealedLightActivity) :
+/** Doc 02 §3.5: filtered to saved-stop routes by default — or to one stop's
+ *  routes when opened from a departures banner; full text on detail. */
+class AlertsScreen(sealedActivity: SealedLightActivity, private val routeFilter: IntArray? = null) :
     LightScreen<Unit, AlertsViewModel>(sealedActivity) {
 
     override val viewModelClass: Class<AlertsViewModel> get() = AlertsViewModel::class.java
-    override fun createViewModel(): AlertsViewModel = AlertsViewModel()
+    override fun createViewModel(): AlertsViewModel = AlertsViewModel(routeFilter)
 
     @Composable
     override fun Content() {
         val alerts by viewModel.alerts.collectAsState()
-        val showAll by viewModel.showAll.collectAsState()
         val status by viewModel.status.collectAsState()
+        val filterLabel by viewModel.filterLabel.collectAsState()
         MctPage(title = "Alerts", onBack = { goBack() }) {
             LazyColumn {
                 item {
                     MctRow(
-                        primary = if (showAll) "Showing all alerts — tap for your stops" else "Showing your stops — tap for all",
+                        primary = filterLabel,
                         onTap = { viewModel.toggle() },
                     )
                 }

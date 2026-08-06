@@ -317,6 +317,26 @@ Each renders a view model backed by `core`. No logic moves into `ui/`.
       driven on hardware with a live vehicle dot; one layout bug found and fixed
       (the 420dp canvas clipped at the fold, visually severing the route —
       projection math proven contiguous off-device first).*
+- [x] **3.12** Full-branch review before PR: 11 findings triaged. Fixed test-first
+      2026-08-06: zero-saved-stops alert badge counted all 24 alerts as "affect
+      your stops" (sentinel collision — `AlertMatch.forSavedStops` now branches
+      explicitly); departures banner opened Alerts unfiltered (optional
+      `routeFilter` param, label states its scope in all four filter states);
+      RouteScreen lacked the D9 expiry replacement its tick claimed; rail
+      identity keyed on `route_id` prefixes that rotate at picks (correction 3;
+      now `RouteLabels.isRail` on MLB/MLR short names — durable fix, a
+      `route_type` byte in the index, deferred to Phase 4 discretion);
+      `routeStops` was quadratic (`tripStops()` per candidate trip — now one
+      departures-section pass); Browse ran its three catalog scans in
+      composition (now VM on IO); `AppGraph.refresh()` raced (now
+      `@Synchronized`); "expires in 0/1 days" grammar (today / 1 day / N days).
+      **Deferred, owned by Phase 4/5:** (a) save-cap at 12 is a silent no-op —
+      say "Saved stops are full (12)" (Phase 4 UI polish); (b) `RtFetcher` has
+      connect/read timeouts but no `callTimeout` ceiling (fold into 4.2's
+      backoff work); (c) `ReferenceScreen` re-parses `referenceJson` per
+      composition and throws on a malformed bundled asset — wrap in
+      `remember {}` + non-throwing access (Phase 4 UI polish; the holidays.json
+      *consumer* is 4.7/M4 scope).
 
 ---
 

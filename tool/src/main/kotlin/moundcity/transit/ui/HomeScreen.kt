@@ -17,7 +17,6 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.viewModelScope
 import moundcity.transit.core.query.AlertMatch
 import moundcity.transit.core.query.HomeState
-import moundcity.transit.core.query.StopRoutes
 
 class HomeViewModel : LightViewModel<Unit>() {
 
@@ -35,11 +34,10 @@ class HomeViewModel : LightViewModel<Unit>() {
                 AppGraph.liveSnapshot(now.epochSecond)?.trips,
             )
             val snapshot = AppGraph.snapshot
-            alertCount.value = if (snapshot == null) 0 else {
-                val routes = saved.mapNotNull { AppGraph.index.resolveStop(it) }
-                    .flatMap { StopRoutes.routesServing(AppGraph.index, it) }.toSet()
-                AlertMatch.forRoutes(snapshot.alerts, AppGraph.index, routes.ifEmpty { null }).size
-            }
+            alertCount.value = if (snapshot == null) 0 else AlertMatch.forSavedStops(
+                snapshot.alerts, AppGraph.index,
+                saved.mapNotNull { AppGraph.index.resolveStop(it) },
+            ).size
         }
     }
 }

@@ -3,14 +3,37 @@ package moundcity.transit.ui
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewModelScope
 import com.thelightphone.sdk.LightScreen
 import com.thelightphone.sdk.LightViewModel
 import com.thelightphone.sdk.SealedLightActivity
+import com.thelightphone.sdk.SimpleLightScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import moundcity.transit.core.query.BrowseCatalog
 
-class BrowseViewModel : LightViewModel<Unit>()
+class BrowseViewModel : LightViewModel<Unit>() {
 
-/** Doc 02 §3.4: three finite lists, no search-the-world box. Every leaf is a stop. */
+    val stations = MutableStateFlow<List<BrowseCatalog.Station>>(emptyList())
+    val centers = MutableStateFlow<List<BrowseCatalog.Center>>(emptyList())
+    val groups = MutableStateFlow<BrowseCatalog.RouteGroups?>(null)
+
+    override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
+        super.onScreenShow(screen)
+        viewModelScope.launch(Dispatchers.IO) {
+            val index = AppGraph.index
+            stations.value = BrowseCatalog.railStations(index)
+            centers.value = BrowseCatalog.transitCenters(index)
+            groups.value = BrowseCatalog.routesGrouped(index)
+        }
+    }
+}
+
+/** Doc 02 §3.4: three finite lists, no search-the-world box. Every leaf is a
+ *  stop. The catalog scans run once per show, off the main thread (finding 6). */
 class BrowseScreen(sealedActivity: SealedLightActivity) :
     LightScreen<Unit, BrowseViewModel>(sealedActivity) {
 
@@ -20,9 +43,9 @@ class BrowseScreen(sealedActivity: SealedLightActivity) :
     @Composable
     override fun Content() {
         val index = AppGraph.index
-        val stations = BrowseCatalog.railStations(index)
-        val centers = BrowseCatalog.transitCenters(index)
-        val groups = BrowseCatalog.routesGrouped(index)
+        val stations by viewModel.stations.collectAsState()
+        val centers by viewModel.centers.collectAsState()
+        val groups by viewModel.groups.collectAsState()
         MctPage(title = "Browse", onBack = { goBack() }) {
             LazyColumn {
                 item { MctRow(primary = "— rail stations (${stations.size}) —") }
@@ -40,20 +63,23 @@ class BrowseScreen(sealedActivity: SealedLightActivity) :
                         },
                     )
                 }
-                item { MctRow(primary = "— Missouri routes (${groups.missouri.size}) —") }
-                items(groups.missouri) { r ->
-                    MctRow(primary = r.label, onTap = { navigateTo({ sa -> RouteScreen(sa, r.routeIdx) }) })
-                }
-                item { MctRow(primary = "— Illinois routes (${groups.illinois.size}) —") }
-                items(groups.illinois) { r ->
-                    MctRow(primary = r.label, onTap = { navigateTo({ sa -> RouteScreen(sa, r.routeIdx) }) })
-                }
-                item { MctRow(primary = "— rail (${groups.rail.size}) —") }
-                items(groups.rail) { line ->
-                    MctRow(
-                        primary = "${line.label}  ${index.routeLongName(line.routeIdxs.first())}",
-                        onTap = { navigateTo({ sa -> RouteScreen(sa, line.routeIdxs.first()) }) },
-                    )
+                val g = groups
+                if (g != null) {
+                    item { MctRow(primary = "— Missouri routes (${g.missouri.size}) —") }
+                    items(g.missouri) { r ->
+                        MctRow(primary = r.label, onTap = { navigateTo({ sa -> RouteScreen(sa, r.routeIdx) }) })
+                    }
+                    item { MctRow(primary = "— Illinois routes (${g.illinois.size}) —") }
+                    items(g.illinois) { r ->
+                        MctRow(primary = r.label, onTap = { navigateTo({ sa -> RouteScreen(sa, r.routeIdx) }) })
+                    }
+                    item { MctRow(primary = "— rail (${g.rail.size}) —") }
+                    items(g.rail) { line ->
+                        MctRow(
+                            primary = "${line.label}  ${index.routeLongName(line.routeIdxs.first())}",
+                            onTap = { navigateTo({ sa -> RouteScreen(sa, line.routeIdxs.first()) }) },
+                        )
+                    }
                 }
             }
         }

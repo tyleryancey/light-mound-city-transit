@@ -39,6 +39,7 @@ class RouteViewModel(private val routeIdx: Int) : LightViewModel<Unit>() {
 
     val direction = MutableStateFlow(0)
     val state = MutableStateFlow<ViewerState?>(null)
+    val expired = MutableStateFlow(false)
 
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
@@ -53,9 +54,11 @@ class RouteViewModel(private val routeIdx: Int) : LightViewModel<Unit>() {
     fun reload() {
         viewModelScope.launch(Dispatchers.IO) {
             val index = AppGraph.index
-            val dir = direction.value
             val now = Instant.now()
-            val isRail = index.routeId(routeIdx).let { it.startsWith("19731") || it.startsWith("19870") }
+            expired.value = DataAge.state(index, now.atZone(CHICAGO).toLocalDate()) == DataAge.State.EXPIRED
+            if (expired.value) { state.value = null; return@launch }
+            val dir = direction.value
+            val isRail = RouteLabels.isRail(index, routeIdx)
             val live = AppGraph.liveSnapshot(now.epochSecond)
             val fixes = if (isRail || live == null) emptyList() else {
                 live.vehicles.fixes.filter { fix ->
@@ -97,11 +100,17 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
         val index = AppGraph.index
         val state by viewModel.state.collectAsState()
         val dir by viewModel.direction.collectAsState()
+        val expired by viewModel.expired.collectAsState()
         MctPage(
             title = "${RouteLabels.displayShortName(index, routeIdx)}  ${index.routeLongName(routeIdx)}",
             onBack = { goBack() },
         ) {
             LazyColumn {
+                if (expired) {
+                    // D9: expiry REPLACES the viewer, same as the departures list
+                    item { MctRow(primary = "This schedule has expired.", secondary = "Refresh the app's data or reinstall to get current times.") }
+                    return@LazyColumn
+                }
                 item {
                     MctRow(
                         primary = "direction ${dir + 1} of 2 — tap to switch",

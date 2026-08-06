@@ -46,7 +46,9 @@ object AppGraph {
         }
     }
 
-    /** Manual refresh with the measured 30 s floor; false = floored, unchanged. */
+    /** Manual refresh with the measured 30 s floor; false = floored, unchanged.
+     *  Synchronized: two screens refreshing at once must not double-fetch. */
+    @Synchronized
     fun refresh(nowEpoch: Long): Boolean {
         if (nowEpoch - lastAttemptEpoch < REFRESH_FLOOR_SECONDS) return false
         lastAttemptEpoch = nowEpoch
