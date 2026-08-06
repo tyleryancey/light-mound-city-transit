@@ -87,4 +87,28 @@ class PrefsTest {
         prefs.markExpiryWarningSeen()
         assertTrue(prefs.expiryWarningSeen(), "latched")
     }
+
+    @Test
+    fun refreshBookkeepingRoundTrips() = withPrefs { prefs ->
+        assertNull(prefs.lastModifiedHeader(), "no header before the first 200")
+        prefs.setLastModifiedHeader("Wed, 05 Aug 2026 12:00:00 GMT")
+        assertEquals(
+            "Wed, 05 Aug 2026 12:00:00 GMT", prefs.lastModifiedHeader(),
+            "If-Modified-Since replays the server's own stamp verbatim (M2)",
+        )
+
+        assertNull(prefs.refreshNotice(), "no notice until something needs saying")
+        prefs.setRefreshNotice("Saved stop 9464 (GRAND AT SHENANDOAH) is not in the new schedule")
+        assertEquals(
+            "Saved stop 9464 (GRAND AT SHENANDOAH) is not in the new schedule",
+            prefs.refreshNotice(),
+            "the notice names the stop that vanished (4.4)",
+        )
+        prefs.setRefreshNotice(null)
+        assertNull(prefs.refreshNotice(), "notices clear once resolved")
+
+        assertFalse(prefs.sourceRevoked(), "not revoked by default")
+        prefs.setSourceRevoked(true)
+        assertTrue(prefs.sourceRevoked(), "403/410 is a remembered state, not a transient error (4.5)")
+    }
 }

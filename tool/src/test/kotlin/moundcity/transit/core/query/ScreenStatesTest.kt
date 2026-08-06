@@ -101,6 +101,16 @@ class ScreenStatesTest {
         assertEquals("11:58", rows[1].nextText, "next live bus at 7855 (718)")
     }
 
+    @Test
+    fun aSavedStopMissingFromTheScheduleStaysVisible() {
+        val rows = HomeState.savedStopRows(
+            index, listOf(10624, 99999), Instant.parse("2026-08-03T16:49:12Z"), chicago,
+        )
+        assertEquals(2, rows.size, "a vanished saved stop is never silently dropped (4.4)")
+        assertEquals("stop 99999", rows[1].name, "no name to show — the code is the identity")
+        assertEquals("not in this schedule", rows[1].nextText, "the row says why there is no next time")
+    }
+
     // --- alerts (3.6) ---
 
     @Test

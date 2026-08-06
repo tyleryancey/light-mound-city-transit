@@ -20,6 +20,9 @@ class Prefs(private val store: DataStore<Preferences>) {
     private val lastSuccessKey = longPreferencesKey("last_refresh_success")
     private val activeIndexKey = stringPreferencesKey("active_index_name")
     private val expiryWarnedKey = booleanPreferencesKey("expiry_warning_seen")
+    private val lastModifiedKey = stringPreferencesKey("last_modified_header")
+    private val refreshNoticeKey = stringPreferencesKey("refresh_notice")
+    private val revokedKey = booleanPreferencesKey("source_revoked")
 
     companion object {
         /** Doc 02: the saved-stops list is bounded at 12, by refusal not truncation. */
@@ -58,6 +61,15 @@ class Prefs(private val store: DataStore<Preferences>) {
 
     suspend fun expiryWarningSeen(): Boolean = store.data.first()[expiryWarnedKey] ?: false
     suspend fun markExpiryWarningSeen() = store.edit { it[expiryWarnedKey] = true }
+
+    suspend fun lastModifiedHeader(): String? = store.data.first()[lastModifiedKey]?.ifEmpty { null }
+    suspend fun setLastModifiedHeader(value: String?) = store.edit { it[lastModifiedKey] = value.orEmpty() }
+
+    suspend fun refreshNotice(): String? = store.data.first()[refreshNoticeKey]?.ifEmpty { null }
+    suspend fun setRefreshNotice(value: String?) = store.edit { it[refreshNoticeKey] = value.orEmpty() }
+
+    suspend fun sourceRevoked(): Boolean = store.data.first()[revokedKey] ?: false
+    suspend fun setSourceRevoked(value: Boolean) = store.edit { it[revokedKey] = value }
 
     /** Bad tokens drop rather than throw (review finding, Phase 2): a single
      * corrupted byte must never brick the class that holds all mutable state —
