@@ -74,8 +74,12 @@ class HomeScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, HomeVi
                 item { MctRow(primary = "Browse", onTap = { navigateTo(::BrowseScreen) }) }
                 item {
                     MctRow(
-                        primary = if (alertCount > 0) "Alerts ($alertCount affect your stops)" else "Alerts",
-                        onTap = { navigateTo(::AlertsScreen) },
+                        primary = when {
+                            alertCount == 1 -> "Alerts (1 affects your stops)"
+                            alertCount > 1 -> "Alerts ($alertCount affect your stops)"
+                            else -> "Alerts"
+                        },
+                        onTap = { navigateTo({ sa -> AlertsScreen(sa) }) },
                     )
                 }
                 item { MctRow(primary = "Reference", onTap = { navigateTo(::ReferenceScreen) }) }

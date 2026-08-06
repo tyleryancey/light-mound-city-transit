@@ -22,7 +22,12 @@ class AlertsViewModel(private val routeFilter: IntArray?) : LightViewModel<Unit>
     val alerts = MutableStateFlow<List<AlertMatch.Matched>>(emptyList())
     val showAll = MutableStateFlow(false)
     val status = MutableStateFlow<String?>(null)
-    val filterLabel = MutableStateFlow("")
+    val filterLabel = MutableStateFlow(
+        if (routeFilter != null) "Showing this stop — tap for all" else "Showing your stops — tap for all",
+    )
+
+    /** Bumped on the main thread per reload; a stale reload must not write last. */
+    @Volatile private var generation = 0
 
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
@@ -35,16 +40,12 @@ class AlertsViewModel(private val routeFilter: IntArray?) : LightViewModel<Unit>
     }
 
     fun reload() {
+        val gen = ++generation
         viewModelScope.launch(Dispatchers.IO) {
-            if (AppGraph.snapshot == null) AppGraph.refresh(Instant.now().epochSecond)
-            val snapshot = AppGraph.snapshot
-            if (snapshot == null) {
-                status.value = "Alerts unavailable — no connection."
-                alerts.value = emptyList()
-                return@launch
-            }
-            status.value = null
+            // Label and filter come from one showAll read, before the blocking
+            // fetch — the label must render while the fetch is still in flight.
             val index = AppGraph.index
+            val all = showAll.value
             val savedRoutes = if (routeFilter != null) null else {
                 AppGraph.prefs?.savedStops().orEmpty()
                     .mapNotNull { index.resolveStop(it) }
@@ -53,18 +54,28 @@ class AlertsViewModel(private val routeFilter: IntArray?) : LightViewModel<Unit>
             }
             // No saved stops shows all — but says so, never "your stops" (finding 1).
             val filter = when {
-                showAll.value -> null
+                all -> null
                 routeFilter != null -> routeFilter.toSet()
                 savedRoutes.isNullOrEmpty() -> null
                 else -> savedRoutes
             }
+            if (gen != generation) return@launch
             filterLabel.value = when {
-                routeFilter != null && showAll.value -> "Showing all alerts — tap for this stop"
+                routeFilter != null && all -> "Showing all alerts — tap for this stop"
                 routeFilter != null -> "Showing this stop — tap for all"
-                showAll.value -> "Showing all alerts — tap for your stops"
+                all -> "Showing all alerts — tap for your stops"
                 savedRoutes.isNullOrEmpty() -> "No saved stops — showing all"
                 else -> "Showing your stops — tap for all"
             }
+            if (AppGraph.snapshot == null) AppGraph.refresh(Instant.now().epochSecond)
+            val snapshot = AppGraph.snapshot
+            if (gen != generation) return@launch
+            if (snapshot == null) {
+                status.value = "Alerts unavailable — no connection."
+                alerts.value = emptyList()
+                return@launch
+            }
+            status.value = null
             alerts.value = AlertMatch.forRoutes(snapshot.alerts, index, filter)
         }
     }
