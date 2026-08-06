@@ -46,6 +46,13 @@ object AppGraph {
         }
     }
 
+    /** The refresh job swapped the on-disk index; make this process see it. */
+    fun reloadFromDisk(ctx: SealedLightContext) {
+        synchronized(this) {
+            loaded = IndexStore(ctx.filesDir, { ctx.readAsset("index.bin") }).load()
+        }
+    }
+
     /** Manual refresh with the measured 30 s floor; false = floored, unchanged.
      *  Synchronized: two screens refreshing at once must not double-fetch. */
     @Synchronized
