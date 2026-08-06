@@ -35,10 +35,16 @@ object AppGraph {
     val index: ScheduleIndex get() = loaded!!.index
 
     fun ensure(ctx: SealedLightContext) {
-        if (loaded == null) {
+        // Each field guards itself: the refresh job can initialize `loaded`
+        // in a UI-less process (reloadFromDisk), and a later ensure() must
+        // still bring up prefs and the reference JSON — a single loaded-null
+        // guard left them dead for the process's life (review, Phase 4).
+        if (loaded == null || prefs == null) {
             synchronized(this) {
                 if (loaded == null) {
                     loaded = IndexStore(ctx.filesDir, { ctx.readAsset("index.bin") }).load()
+                }
+                if (prefs == null) {
                     prefs = Prefs(ctx.dataStore)
                     referenceJson = mapOf(
                         "fares" to String(ctx.readAsset("fares.json"), Charsets.UTF_8),

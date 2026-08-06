@@ -94,7 +94,9 @@ object HomeState {
         SavedStopRow(
             code = code,
             name = index.stopName(stop),
-            nextText = next?.let { RowFormat.timeText(it.minute) } ?: "no more today",
+            // The builder owns the whole phrase — a screen prepending "next"
+            // would produce "next no more today" (review, Phase 4).
+            nextText = next?.let { "next ${RowFormat.timeText(it.minute)}" } ?: "no more today",
         )
     }
 }

@@ -380,6 +380,22 @@ Each renders a view model backed by `core`. No logic moves into `ui/`.
 - [ ] **4.7** **M4 — holidays.** After 2026-08-31, check whether 2026-09-07 carries
       `calendar_dates` rows. Bundle two tables if not (doc 02 §7).
 - [ ] **4.8** **M5 — `stop_id` stability.** Set-difference two consecutive picks.
+- [x] **4.9** Full-branch review before PR: 5 findings, 4 fixed test-first
+      2026-08-06. **Critical:** a job-first process (WorkManager cold start —
+      the normal daily case) left `AppGraph.prefs`/`referenceJson` dead for the
+      process's life because `ensure()` guarded everything on `loaded == null`
+      and `reloadFromDisk` set `loaded` alone — Home showed zero saved stops,
+      the save toggle no-op'd, Reference read "unavailable". Fixed with
+      per-field guards; verified on hardware by attaching the UI to the job's
+      own process (same pid) after a forced job-first run. Also: a captive
+      portal's non-zip 200 crashed the job silently outside the Refused path —
+      now caught as NeedsRetry (TDD); a Refused zip's 200 now clears the
+      revocation state so the two banners can't contradict (TDD); Home's
+      saved-stop phrase moved into HomeState so the screen can't render "next
+      not in this schedule" or "next no more today" (TDD). **Recorded, accepted:**
+      dismissNotice persists asynchronously — a re-show landing inside the
+      millisecond write window can resurrect the notice once; self-healing,
+      re-dismissible, not worth blocking the tap on the DataStore write.
 
 ---
 

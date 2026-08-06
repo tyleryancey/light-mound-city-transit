@@ -96,7 +96,7 @@ class HomeScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, HomeVi
                 items(saved) { row ->
                     MctRow(
                         primary = "${row.code}  ${row.name}",
-                        secondary = "next ${row.nextText}",
+                        secondary = row.nextText,
                         onTap = {
                             val stop = AppGraph.index.resolveStop(row.code) ?: return@MctRow
                             navigateTo({ sa -> DeparturesScreen(sa, stop) })

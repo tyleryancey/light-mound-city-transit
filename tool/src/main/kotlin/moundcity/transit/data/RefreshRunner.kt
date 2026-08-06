@@ -59,17 +59,23 @@ class RefreshRunner(
     ): RunOutcome {
         // ZipFile needs random access by entry name; a temp file is the price.
         val tmpZip = File(filesDir, "feed.zip.tmp")
-        tmpZip.writeBytes(fresh.zipBytes)
         try {
+            tmpZip.writeBytes(fresh.zipBytes)
             val store = IndexStore(filesDir, asset)
             val old = store.load()
             val saved = prefs.savedStops()
-            val outcome = ZipFile(tmpZip).use { zip ->
-                ScheduleRefresh.rebuild(
-                    { name -> zip.getInputStream(zip.getEntry(name)).bufferedReader() },
-                    old.index,
-                    saved,
-                )
+            val outcome = try {
+                ZipFile(tmpZip).use { zip ->
+                    ScheduleRefresh.rebuild(
+                        { name -> zip.getInputStream(zip.getEntry(name)).bufferedReader() },
+                        old.index,
+                        saved,
+                    )
+                }
+            } catch (e: java.io.IOException) {
+                // A 200 whose body is not a zip (captive portal, CDN error
+                // page) or a disk failure — transient, never a dead job.
+                return RunOutcome.NeedsRetry
             }
             return when (outcome) {
                 is ScheduleRefresh.Outcome.Rebuilt -> {
@@ -84,7 +90,10 @@ class RefreshRunner(
                 }
                 is ScheduleRefresh.Outcome.Rejected -> {
                     // No Last-Modified stamp: a refused zip must be refetched
-                    // whole next run, never 304'd into permanence.
+                    // whole next run, never 304'd into permanence. But the 200
+                    // that carried it proves the licence is back — the
+                    // revocation banner must not outlive its cause.
+                    prefs.setSourceRevoked(false)
                     prefs.setRefreshNotice("Schedule update refused: ${outcome.reason}. Keeping the current schedule.")
                     RunOutcome.Refused(outcome.reason)
                 }

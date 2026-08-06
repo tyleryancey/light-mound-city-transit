@@ -148,6 +148,33 @@ class RefreshRunnerTest {
         }
     }
 
+    @Test
+    fun aCaptivePortalTwoHundredIsTransientNotACrash() = withHarness(
+        listOf(ScheduleFetcher.Result.Fresh("<html>sign in to airport wifi</html>".toByteArray(), "Wed, 05 Aug 2026 12:00:00 GMT")),
+    ) { runner, dir, prefs, _ ->
+        val out = runner.run(dir, asset, prefs, nowEpoch = 100)
+        assertIs<RefreshRunner.RunOutcome.NeedsRetry>(out, "a 200 that is not a zip is a transient condition, never a dead job")
+        assertNull(prefs.refreshNotice(), "nothing was refused — no notice")
+        assertNull(prefs.lastModifiedHeader(), "the portal's stamp is never recorded")
+        assertTrue(
+            dir.listFiles().orEmpty().none { it.name.endsWith(".tmp") || it.name.startsWith("index-") },
+            "no index written and no stranded temp zip",
+        )
+    }
+
+    @Test
+    fun aRefusedZipStillProvesTheFeedIsBack() = withHarness(
+        listOf(ScheduleFetcher.Result.Revoked, ScheduleFetcher.Result.Fresh(buildTamperedZip(), null)),
+    ) { runner, dir, prefs, _ ->
+        assertIs<RefreshRunner.RunOutcome.Revoked>(runner.run(dir, asset, prefs, 100))
+        assertTrue(prefs.sourceRevoked(), "day 1: 403 remembered")
+        assertIs<RefreshRunner.RunOutcome.Refused>(runner.run(dir, asset, prefs, 200))
+        assertFalse(
+            prefs.sourceRevoked(),
+            "a 200 — even one whose zip is refused — proves the licence is back; the two banners must not contradict",
+        )
+    }
+
     /** The fixture zip with stops.txt replaced by one row violating A1. */
     private fun buildTamperedZip(): ByteArray {
         val out = java.io.ByteArrayOutputStream()
