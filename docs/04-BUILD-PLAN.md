@@ -410,7 +410,8 @@ Each renders a view model backed by `core`. No logic moves into `ui/`.
 - [x] **5.2** Vetting-defense one-pager current against the tool as it actually ships.
       *Done 2026-08-07 — three stale claims fixed: gzip (correction 9 — the server
       ignores it; If-Modified-Since is the budget), "no serialization library"
-      (kotlinx-serialization-json parses the three bundled reference JSONs), and
+      (kotlinx-serialization-json parses bundled reference JSONs — fares and
+      contacts today, holidays bundled for 4.7's holiday card), and
       "nothing refreshes on its own" (the once-daily schedule job is named).*
 - [x] **5.3** Finite-by-rule audit re-run: doc 05 §5, every bound with where it
       lives in code, dated 2026-08-07; Home's notice rows and the retry bound added.
@@ -429,7 +430,8 @@ Each renders a view model backed by `core`. No logic moves into `ui/`.
       `trip_headsign` / captured contact-and-fare labels — rendered data,
       documented as such in the README's non-affiliation section.*
 - [x] **5.8** Public repo, MIT, clean history *(verified via API: PUBLIC, mit;
-      every commit landed through reviewed PRs #1–#10)*.
+      all feature work landed through reviewed PRs #1–#10, atop two repo-setup
+      commits — identity and CI adoption — that predate PR #1)*.
 - [ ] **5.9** Submit. Tier 1 ("Light-approved") is the target; Tier 2 ("SDK-built",
       no manual approval) is the fallback if aesthetic vetting stalls. **Installed is
       not the same as approved** — do not conflate them in a milestone.

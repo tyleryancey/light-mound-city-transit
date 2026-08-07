@@ -28,10 +28,12 @@ not with assurances.
 >
 > - **Not a feed / not infinite.** Every list has a hard bound, written into the
 >   code: **8** departures per stop, **12** saved stops, **38** rail stations,
->   **30** transit centers, **62** routes, one route at a time in the viewer, and
->   the remaining-stops list ends at the end of the line. There is nothing to
->   scroll past. Realtime never refreshes on its own — it is fetched only while a
->   departures screen is open and only when the user asks, 30 s minimum apart. The
+>   **30** transit centers, **60** route entries, one route at a time in the
+>   viewer, and the remaining-stops list ends at the end of the line. There is
+>   nothing to scroll past. Realtime never refreshes on a timer — it is fetched
+>   only in the foreground: on the departures and viewer screens when the user
+>   taps refresh, and once when the alerts screen opens with nothing cached,
+>   30 s minimum apart. The
 >   single background job is a once-daily schedule refresh — the same timetable
 >   already in the APK, just newer. No realtime polling and no notification.
 > - **Not browser-adjacent.** Native Compose and the `sdk:ui` primitives throughout.
@@ -49,11 +51,12 @@ not with assurances.
 >   see §4.
 > - **Dependencies: allow-listed only.** Declared by the tool:
 >   `androidx.datastore:datastore-preferences-core`, `com.squareup.okhttp3:okhttp`,
->   `org.jetbrains.kotlinx:kotlinx-serialization-json` (parses only the three
->   bundled reference JSONs), and the SDK — Compose, lifecycle, and coroutines
+>   `org.jetbrains.kotlinx:kotlinx-serialization-json` (parses only bundled
+>   reference JSONs — fares and contacts today; holidays ships bundled for the
+>   post-pick holiday card), and the SDK — Compose, lifecycle, and coroutines
 >   arrive through the SDK itself. No KSP processor beyond the SDK plugin's own
 >   (a template Room processor was found unused and removed at the 5.5 audit).
->   **No protobuf runtime** — the GTFS-Realtime decoder is ~200 lines of plain
+>   **No protobuf runtime** — the GTFS-Realtime decoder is ~350 lines of plain
 >   Kotlin in a pure-JVM package with unit tests against captured feed bytes.
 > - **Data.** Outbound: HTTP GETs to one host, `metrostlouis.org`, for four public
 >   files. No identifiers, no query parameters, no user data, no request body. The
@@ -185,11 +188,11 @@ Every surface, with its bound. **Re-checked against the shipped code 2026-08-07
 | Remaining stops on a trip | end of line (max 141 in the feed) | trip length |
 | Rail stations | 38 | feed, via `RouteLabels.isRail` (pinned by test) |
 | Transit centers | 30 named (45 platform stops merged by name) | feed + name merge (pinned by test) |
-| Routes | 62 (44 MO / 14 IL / 2 rail lines) | feed (pinned by test) |
+| Routes | 62 feed `route_id`s → 60 browse entries (44 MO / 14 IL / 2 rail lines — pick-twins merged) | feed + merge (pinned by test) |
 | Alerts | whatever the feed carries (24 in the reference capture) | feed; no accumulation, no history |
 | Reference cards | 5, static | bundled assets, parse-or-single-message |
 | Background work | one job, once daily; two in-run retries then WorkManager backoff | `enqueuePeriodic(24h)` UPDATE policy; `RefreshPolicy.retryDelaysMs` (pinned by test) |
-| Realtime fetches | user-initiated only, min 30 s apart | `AppGraph.REFRESH_FLOOR_SECONDS`, `@Synchronized` |
+| Realtime fetches | foreground only: departures/viewer on tap, alerts once per open when nothing cached; min 30 s apart | `AppGraph.REFRESH_FLOOR_SECONDS`, `@Synchronized` |
 
 No infinite scroll, no pagination, no "load more", no auto-refresh of anything
 visible, no notification, no badge, no unread count.

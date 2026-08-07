@@ -13,8 +13,10 @@ It does not plan trips, draw maps, know where you are, or scroll forever.
 |---|---|---|---|
 | ![Home](screenshots/home.png) | ![Departures](screenshots/departures.png) | ![Route viewer](screenshots/route-viewer.png) | ![Alerts](screenshots/alerts.png) |
 
-*Screenshots from a physical Light Phone 3, 2026-08-06 — the departures shown are
-real MetroLink times from the on-device-refreshed schedule.*
+*Screenshots from a physical Light Phone 3, 2026-08-06. Every screen carries its
+schedule-age footer: the Home capture postdates the phone's own daily refresh
+(footer 2026-08-06), the others show the as-shipped bundle (footer 2026-07-30) —
+the footer dating the difference is the feature.*
 
 ---
 
@@ -24,10 +26,12 @@ real MetroLink times from the on-device-refreshed schedule.*
   departures, with route, destination, time, and — for buses with live data — whether
   they are running early or late.
 - **Saved stops**, up to twelve, each showing its next departure.
-- **Trip detail.** How many stops back the bus is ("about 2 stops away · 0.7 mi
-  (straight line)") and every remaining stop to the end of the line.
+- **Trip detail.** How many stops back the bus is ("about 1 stop away · 0.7 mi
+  (straight line)" — the distance shows only when it is one stop or closer) and
+  every remaining stop to the end of the line.
 - **Browse** by rail station (38), transit center (30 named, 45 platform stops),
-  or route (62).
+  or route (60 entries: 44 Missouri, 14 Illinois, 2 rail lines — the feed's 62
+  `route_id`s include two per rail line across the service-change transition).
 - **A schematic route viewer.** One route at a time: the route's own shape from the
   feed, its stops as hollow circles, and — for buses — the agency's published
   vehicle positions as filled dots. No basemap, no tiles, never your location.
@@ -59,11 +63,13 @@ https://www.metrostlouis.org/RealTimeData/StlRealTimeAlerts.pb   GTFS-RT service
 ```
 
 The schedule is bundled in the app so the tool works offline from first launch, and a
-once-daily background job fetches a newer one. Real-time data is fetched only while a
-departure screen is open and only when you ask for it. Requests use conditional GETs
-(`If-Modified-Since`), so an unchanged schedule costs a `304` and no body. The server
-does not honour gzip (measured), so revalidation — not compression — is the data
-budget, and the tool is built accordingly.
+once-daily background job fetches a newer one. Real-time data is fetched only in the
+foreground — on the departures and viewer screens when you tap refresh, and once
+when the alerts screen opens with nothing cached — never on a timer, 30 seconds
+minimum apart. The schedule request uses a conditional GET (`If-Modified-Since`),
+so an unchanged schedule costs a `304` and no body. The server does not honour gzip
+(measured), so revalidation — not compression — is the data budget, and the tool is
+built accordingly.
 
 ### Not affiliated with the agency
 
@@ -159,13 +165,14 @@ current service alerts.
 
 - **Not a feed / not infinite.** Every list has a bound written into the code: **8**
   departures per stop, **12** saved stops, **38** rail stations, **30** transit
-  centers, **62** routes, one route at a time in the viewer, and the remaining-stops
-  list ends at the end of the line. Real-time never refreshes on its own — it is
-  fetched only while a departures screen is open and only when the user asks, 30 s
-  minimum between taps. The single piece of background work is a **once-daily**
-  schedule refresh that downloads the same timetable already in the APK, just newer.
-  No realtime polling, no notifications, no badges, no history, no "since you last
-  checked".
+  centers, **60** route entries, one route at a time in the viewer, and the
+  remaining-stops list ends at the end of the line. Real-time never refreshes on a
+  timer — it is fetched only in the foreground: on the departures and viewer
+  screens when the user taps refresh, and once when the alerts screen opens with
+  nothing cached, 30 s minimum apart. The single piece of background work is a
+  **once-daily** schedule refresh that downloads the same timetable already in the
+  APK, just newer. No realtime polling, no notifications, no badges, no history,
+  no "since you last checked".
 - **Not browser-adjacent.** Native Compose and the `sdk:ui` primitives throughout. No
   WebView, no remote HTML, no map tiles, no PDF. The agency's per-alert `url` field is
   present in the feed and is deliberately dropped.
@@ -181,10 +188,11 @@ current service alerts.
   design is built on the fact that every stop already has a unique number on its sign.
 - **Dependencies:** allow-listed only. Declared by the tool:
   `androidx.datastore:datastore-preferences-core`, `com.squareup.okhttp3:okhttp`,
-  `org.jetbrains.kotlinx:kotlinx-serialization-json` (parses only the three bundled
-  reference JSONs), and the SDK — Compose, lifecycle, and coroutines arrive through
+  `org.jetbrains.kotlinx:kotlinx-serialization-json` (parses only bundled reference
+  JSONs — fares and contacts today; holidays ships bundled for the post-pick
+  holiday card), and the SDK — Compose, lifecycle, and coroutines arrive through
   the SDK itself. No KSP processor beyond the SDK plugin's own. **No protobuf
-  runtime:** the GTFS-Realtime decoder is ~200 lines of plain Kotlin in an
+  runtime:** the GTFS-Realtime decoder is ~350 lines of plain Kotlin in an
   Android-free package, unit-tested against captured feed bytes.
 - **Data:** outbound is HTTP GETs to one host, `metrostlouis.org`, for four public
   files — no identifiers, no query parameters, no user data, no request body. The
