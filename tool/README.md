@@ -1,15 +1,20 @@
-# STL Departures
-
-*(working name — see `docs/02-PRODUCT-SPEC.md` §1; the tool `id` is permanent once
-published and must be locked before the first submission)*
+# Mound City Transit
 
 A departure board for St. Louis regional transit, for the Light Phone 3.
+(`id = moundcity.transit` — locked at Phase 0.9; permanent once published.)
 
 You type the number printed on the stop sign. It tells you what is coming and when.
 It works with the radios off, using a schedule bundled in the app. With a connection
 it adds live delays for buses and current service alerts.
 
 It does not plan trips, draw maps, know where you are, or scroll forever.
+
+| Home | Departures | Route viewer | Alerts |
+|---|---|---|---|
+| ![Home](screenshots/home.png) | ![Departures](screenshots/departures.png) | ![Route viewer](screenshots/route-viewer.png) | ![Alerts](screenshots/alerts.png) |
+
+*Screenshots from a physical Light Phone 3, 2026-08-06 — the departures shown are
+real MetroLink times from the on-device-refreshed schedule.*
 
 ---
 
@@ -19,9 +24,13 @@ It does not plan trips, draw maps, know where you are, or scroll forever.
   departures, with route, destination, time, and — for buses with live data — whether
   they are running early or late.
 - **Saved stops**, up to twelve, each showing its next departure.
-- **Trip detail.** Where the bus is now, how far it is in a straight line, and every
-  remaining stop to the end of the line.
-- **Browse** by rail station (38), transit center (45), or route (62).
+- **Trip detail.** How many stops back the bus is ("about 2 stops away · 0.7 mi
+  (straight line)") and every remaining stop to the end of the line.
+- **Browse** by rail station (38), transit center (30 named, 45 platform stops),
+  or route (62).
+- **A schematic route viewer.** One route at a time: the route's own shape from the
+  feed, its stops as hollow circles, and — for buses — the agency's published
+  vehicle positions as filled dots. No basemap, no tiles, never your location.
 - **Service alerts** from the agency's live feed, filtered to the routes that serve
   your saved stops.
 - **Reference:** fares and passes, how to pay, accessibility and bike racks, and the
@@ -52,7 +61,9 @@ https://www.metrostlouis.org/RealTimeData/StlRealTimeAlerts.pb   GTFS-RT service
 The schedule is bundled in the app so the tool works offline from first launch, and a
 once-daily background job fetches a newer one. Real-time data is fetched only while a
 departure screen is open and only when you ask for it. Requests use conditional GETs
-and gzip, so an unchanged feed costs a `304`.
+(`If-Modified-Since`), so an unchanged schedule costs a `304` and no body. The server
+does not honour gzip (measured), so revalidation — not compression — is the data
+budget, and the tool is built accordingly.
 
 ### Not affiliated with the agency
 
@@ -63,8 +74,12 @@ mark, or brand colour is used anywhere in the tool.
 
 Route and destination names such as "MetroLink Blue Line" or "RED LINE TO SHILOH
 SCOTT" appear on screen because they are the `route_long_name` and `trip_headsign`
-values in the agency's own feed, rendered verbatim. Renaming them would make the tool
-wrong, not safer.
+values in the agency's own feed, rendered verbatim. The same applies to contact and
+fare labels on the Reference screen ("Metro Public Safety", "Metro Call-A-Ride"):
+they are captured from the agency's public website and rendered as data, with their
+capture date shown. Renaming an agency's own route names or phone-line names would
+make the tool wrong, not safer. The tool's own chrome — its name, labels, headings,
+and messages — uses no agency mark.
 
 ### Terms of Use
 
@@ -143,11 +158,14 @@ radios off using a bundled schedule; with a connection it adds live delays and
 current service alerts.
 
 - **Not a feed / not infinite.** Every list has a bound written into the code: **8**
-  departures per stop, **12** saved stops, **38** rail stations, **45** transit
-  centers, **62** routes, and the remaining-stops list ends at the end of the line.
-  Nothing refreshes on its own — real-time is fetched only while a departures screen
-  is open and only when the user asks. No background polling, no notifications, no
-  badges, no history, no "since you last checked".
+  departures per stop, **12** saved stops, **38** rail stations, **30** transit
+  centers, **62** routes, one route at a time in the viewer, and the remaining-stops
+  list ends at the end of the line. Real-time never refreshes on its own — it is
+  fetched only while a departures screen is open and only when the user asks, 30 s
+  minimum between taps. The single piece of background work is a **once-daily**
+  schedule refresh that downloads the same timetable already in the APK, just newer.
+  No realtime polling, no notifications, no badges, no history, no "since you last
+  checked".
 - **Not browser-adjacent.** Native Compose and the `sdk:ui` primitives throughout. No
   WebView, no remote HTML, no map tiles, no PDF. The agency's per-alert `url` field is
   present in the feed and is deliberately dropped.
@@ -161,12 +179,13 @@ current service alerts.
   offline, showing the bundled schedule" instead of spinning. **No location permission
   is requested**, although two are allow-listed and the phone has GPS: the input
   design is built on the fact that every stop already has a unique number on its sign.
-- **Dependencies:** allow-listed only — `androidx.compose`,
-  `androidx.activity:activity-compose`, `androidx.lifecycle`, `androidx.datastore`,
-  `org.jetbrains.kotlinx:kotlinx-coroutines`, `com.squareup.okhttp3:okhttp`, and the
-  SDK. **No protobuf runtime and no
-  serialization library:** the GTFS-Realtime decoder is ~200 lines of plain Kotlin in
-  an Android-free package, unit-tested against captured feed bytes.
+- **Dependencies:** allow-listed only. Declared by the tool:
+  `androidx.datastore:datastore-preferences-core`, `com.squareup.okhttp3:okhttp`,
+  `org.jetbrains.kotlinx:kotlinx-serialization-json` (parses only the three bundled
+  reference JSONs), and the SDK — Compose, lifecycle, and coroutines arrive through
+  the SDK itself. No KSP processor beyond the SDK plugin's own. **No protobuf
+  runtime:** the GTFS-Realtime decoder is ~200 lines of plain Kotlin in an
+  Android-free package, unit-tested against captured feed bytes.
 - **Data:** outbound is HTTP GETs to one host, `metrostlouis.org`, for four public
   files — no identifiers, no query parameters, no user data, no request body. The
   User-Agent names the tool and a contact address. Saved stop numbers live in

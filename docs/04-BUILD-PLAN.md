@@ -401,25 +401,41 @@ Each renders a view model backed by `core`. No logic moves into `ui/`.
 
 ## Phase 5 — submission
 
-- [ ] **5.1** `tool/README.md`: what it does, screenshots, the Terms of Use quote,
-      and the "Why this is a clean tool to vet" section. Root `README.md` / `LICENSE`
-      stay the upstream template.
-- [ ] **5.2** Vetting-defense one-pager current against the tool as it actually ships
-      (doc 05).
-- [ ] **5.3** Finite-by-rule audit: every list bounded, every loop terminating,
-      nothing designed to be checked compulsively. Write the bound next to each list.
-- [ ] **5.4** `permissions` justification: two, each with one line of why.
-- [ ] **5.5** Dependency audit: every declared **and resolved** coordinate against the
-      allow-list. The plugin checks both.
-- [ ] **5.6** `./gradlew check` green.
-- [ ] **5.7** Trademark sweep: no "Metro", "MetroBus", "MetroLink" in the tool name,
-      label, id, icon, or chrome. Where those words appear inside `route_long_name` or
-      `trip_headsign`, note in the README that they are rendered feed data.
-- [ ] **5.8** Public repo, MIT, clean history. Light's build server compiles and signs
-      **from a public git commit** and archives the source at build time.
+- [x] **5.1** `tool/README.md`: what it does, screenshots, the Terms of Use quote,
+      and the "Why this is a clean tool to vet" section. *Done 2026-08-07: name
+      corrected to the locked Mound City Transit; 4 hardware screenshots committed
+      under `tool/screenshots/`; viewer + stops-back added to the feature list;
+      the root README's own template TODOs filled (its instruction, not a
+      divergence) and its stale GitHub-Packages note fixed to the JitPack reality.*
+- [x] **5.2** Vetting-defense one-pager current against the tool as it actually ships.
+      *Done 2026-08-07 — three stale claims fixed: gzip (correction 9 — the server
+      ignores it; If-Modified-Since is the budget), "no serialization library"
+      (kotlinx-serialization-json parses the three bundled reference JSONs), and
+      "nothing refreshes on its own" (the once-daily schedule job is named).*
+- [x] **5.3** Finite-by-rule audit re-run: doc 05 §5, every bound with where it
+      lives in code, dated 2026-08-07; Home's notice rows and the retry bound added.
+- [x] **5.4** `permissions` justification: two, each with one line of why
+      (README vetting section, from `lighttool.toml`).
+- [x] **5.5** Dependency audit. *Declared: datastore-preferences-core, okhttp,
+      kotlinx-serialization-json, sdk:client — all allow-listed; resolved graph
+      checked by the plugin at every build. **Found and removed: the scaffold's
+      unused `ksp(libs.androidx.room.compiler)`** — violated doc 05's "no KSP
+      processor other than the plugin's own"; zero Room usage in sources; registry
+      regeneration verified after removal.*
+- [x] **5.6** `./gradlew check` green (2026-08-07, post-audit).
+- [x] **5.7** Trademark sweep. *Two chrome strings found and rewritten ("Metro's
+      schedule feed…" → "The agency's…"; the fares card's curated copy likewise);
+      remaining on-screen "Metro…" occurrences are `route_long_name` /
+      `trip_headsign` / captured contact-and-fare labels — rendered data,
+      documented as such in the README's non-affiliation section.*
+- [x] **5.8** Public repo, MIT, clean history *(verified via API: PUBLIC, mit;
+      every commit landed through reviewed PRs #1–#10)*.
 - [ ] **5.9** Submit. Tier 1 ("Light-approved") is the target; Tier 2 ("SDK-built",
       no manual approval) is the fallback if aesthetic vetting stalls. **Installed is
       not the same as approved** — do not conflate them in a milestone.
+      *Package ready 2026-08-07; the Tool Library is expected live ~Oct 2026.
+      Pre-submission ritual recorded in doc 05 §6: re-run the checklist, re-capture
+      the bundle close to the date, re-run the finite audit against that build.*
 
 ---
 

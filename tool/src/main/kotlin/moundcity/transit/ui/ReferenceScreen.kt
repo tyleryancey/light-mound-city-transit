@@ -70,7 +70,7 @@ class ReferenceScreen(sealedActivity: SealedLightActivity) :
                 item {
                     MctRow(
                         primary = "Children 4 and under free; ages 5–12 half price. Seniors 65+ half price with a permit.",
-                        secondary = "Illinois (St. Clair County) prices match, plus a \$3.00 2-hour pass Metro's own page does not list. The \$1.00 bus fare is temporary per Metro (paper-transfer suspension); gate rollout completes 2026-08-17. Copy reviewed 2026-08-05.",
+                        secondary = "Illinois (St. Clair County) prices match, plus a \$3.00 2-hour pass the agency's own fare page does not list. The \$1.00 bus fare is temporary per the agency (paper-transfer suspension); gate rollout completes 2026-08-17. Copy reviewed 2026-08-05.",
                     )
                 }
                 item { MctRow(primary = "— payment & passes —") }
