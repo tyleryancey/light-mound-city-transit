@@ -8,9 +8,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
- * The realtime fetch, foreground and user-initiated only (D10). Phase 4.2
- * adds If-Modified-Since revalidation and backoff; the descriptive User-Agent
- * with a contact ships from day one.
+ * The realtime fetch, foreground only (D10): departures/viewer on tap, alerts
+ * once per open when nothing is cached, all behind the 30 s floor. Fetches
+ * whole deliberately — at the feed's 21–42 s republish cadence (M1), a ≥30 s
+ * re-tap almost always finds new bytes, so conditional GETs would buy nothing.
  */
 object RtFetcher {
 

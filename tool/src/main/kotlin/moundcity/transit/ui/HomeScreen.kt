@@ -79,7 +79,7 @@ class HomeScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, HomeVi
                 if (revoked) {
                     item {
                         MctRow(
-                            primary = "Metro's schedule feed is no longer available",
+                            primary = "The agency's schedule feed is no longer available",
                             secondary = "Using the last good schedule — times will age out (D9)",
                         )
                     }
