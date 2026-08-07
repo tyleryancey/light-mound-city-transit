@@ -19,7 +19,13 @@ object RtFetcher {
 
     data class Snapshot(val trips: RtTrips, val vehicles: RtVehicles, val alerts: RtAlerts, val fetchedEpoch: Long)
 
-    private val client = OkHttpClient()
+    // Doc 03 §5: 10 s timeouts; the 30 s ceiling means no refresh can outlive
+    // the manual-refresh floor it sits behind (review finding, Phase 3).
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .callTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
 
     /** Throws on any network or decode failure; callers degrade to scheduled and say so. */
     fun fetchAll(nowEpoch: Long): Snapshot {

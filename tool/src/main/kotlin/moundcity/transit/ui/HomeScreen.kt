@@ -8,9 +8,11 @@ import androidx.compose.runtime.getValue
 import com.thelightphone.sdk.InitialScreen
 import com.thelightphone.sdk.LightScreen
 import com.thelightphone.sdk.LightViewModel
+import com.thelightphone.sdk.LightWork
 import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.SimpleLightScreen
 import java.time.Instant
+import kotlin.time.Duration.Companion.hours
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -22,11 +24,20 @@ class HomeViewModel : LightViewModel<Unit>() {
 
     val savedRows = MutableStateFlow<List<HomeState.SavedStopRow>>(emptyList())
     val alertCount = MutableStateFlow(0)
+    val refreshNotice = MutableStateFlow<String?>(null)
+    val sourceRevoked = MutableStateFlow(false)
+
+    fun dismissNotice() {
+        refreshNotice.value = null
+        viewModelScope.launch(Dispatchers.IO) { AppGraph.prefs?.setRefreshNotice(null) }
+    }
 
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
         viewModelScope.launch(Dispatchers.IO) {
             val prefs = AppGraph.prefs ?: return@launch
+            refreshNotice.value = prefs.refreshNotice()
+            sourceRevoked.value = prefs.sourceRevoked()
             val saved = prefs.savedStops()
             val now = Instant.now()
             savedRows.value = HomeState.savedStopRows(
@@ -51,6 +62,9 @@ class HomeScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, HomeVi
 
     override fun willShow() {
         AppGraph.ensure(lightContext)
+        // UPDATE policy makes re-enqueueing idempotent (doc 03 §5); the
+        // 15-minute WorkManager floor is far below this interval.
+        LightWork.enqueuePeriodic(lightContext, "schedule-refresh", 24.hours)
     }
 
     @Composable
@@ -58,12 +72,31 @@ class HomeScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, HomeVi
         AppGraph.ensure(lightContext)
         val saved by viewModel.savedRows.collectAsState()
         val alertCount by viewModel.alertCount.collectAsState()
+        val notice by viewModel.refreshNotice.collectAsState()
+        val revoked by viewModel.sourceRevoked.collectAsState()
         MctPage(title = "Mound City Transit") {
             LazyColumn {
+                if (revoked) {
+                    item {
+                        MctRow(
+                            primary = "Metro's schedule feed is no longer available",
+                            secondary = "Using the last good schedule — times will age out (D9)",
+                        )
+                    }
+                }
+                if (notice != null) {
+                    item {
+                        MctRow(
+                            primary = notice!!,
+                            secondary = "tap to dismiss",
+                            onTap = { viewModel.dismissNotice() },
+                        )
+                    }
+                }
                 items(saved) { row ->
                     MctRow(
                         primary = "${row.code}  ${row.name}",
-                        secondary = "next ${row.nextText}",
+                        secondary = row.nextText,
                         onTap = {
                             val stop = AppGraph.index.resolveStop(row.code) ?: return@MctRow
                             navigateTo({ sa -> DeparturesScreen(sa, stop) })

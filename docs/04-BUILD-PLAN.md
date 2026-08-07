@@ -342,21 +342,60 @@ Each renders a view model backed by `core`. No logic moves into `ui/`.
 
 ## Phase 4 — refresh and resilience
 
-- [ ] **4.1** `@LightJob("schedule-refresh")` + `enqueuePeriodic(24h)`, scheduled from
+- [x] **4.1** `@LightJob("schedule-refresh")` + `enqueuePeriodic(24h)`, scheduled from
       the first screen's `onScreenShow` (`onToolCreate` has no context; UPDATE policy
-      makes it idempotent).
-- [ ] **4.2** Conditional GET, gzip, backoff, and a **descriptive User-Agent with a
-      contact**.
-- [ ] **4.3** Rebuild the index from a fetched zip; run every assertion; keep the old
-      index on any failure and surface it.
-- [ ] **4.4** Saved-stop survival diff after each refresh; name any stop that vanished.
-- [ ] **4.5** Revocation path: 403/410 falls back to the bundled schedule with its own
-      message. The licence is revocable and the tool should say so gracefully.
-- [ ] **4.6** Airplane-mode pass: every screen works, everything reads `scheduled`,
-      nothing spins forever.
+      makes it idempotent). *Done 2026-08-06: KSP registration verified in the
+      generated `LightSdkRegistry`; the WorkManager job visible in `dumpsys
+      jobscheduler` on the LP3; a forced run executed the full pipeline live.*
+- [x] **4.2** Conditional GET, backoff, and a **descriptive User-Agent with a
+      contact**. Gzip consciously omitted — the server ignores it (correction 9);
+      If-Modified-Since is the entire data budget. *Done 2026-08-06: RefreshPolicy
+      classification + two rising backoff delays TDD'd; 10 s connect/read, 120 s
+      call ceiling on the zip, 30 s on realtime (finding 9).*
+- [x] **4.3** Rebuild the index from a fetched zip; run every assertion; keep the old
+      index on any failure and surface it. *Done 2026-08-06, proven live: the forced
+      job fetched Metro's real zip and built `index-20260806.bin` (3,315,239 B) on
+      the LP3 in ~35 s; the fixture zip rebuilds byte-identical to the shipped
+      asset (one pipeline, no drift); a tampered zip is Rejected quoting "A1: …"
+      with the old index kept and the refusal surfaced. **Live-feed discovery:**
+      Metro edits daily — every calendar start date had advanced to 20260806, and
+      the Aug-8 Saturday moved from two `calendar_dates` exceptions into a real
+      `319-T2` calendar row, leaving `calendar_dates` EMPTY — the zero-length
+      section path went through writer, assertions, and reader on hardware.*
+- [x] **4.4** Saved-stop survival diff after each refresh; name any stop that
+      vanished. *Done 2026-08-06: the notice names code and old-index name; Home
+      keeps a vanished stop's row reading "not in this schedule" instead of
+      silently dropping it; live run diffed 5,118 unchanged stops → no notice.*
+- [x] **4.5** Revocation path: 403/410 falls back to the bundled schedule with its own
+      message. *Done 2026-08-06: REVOKED is a remembered Prefs state a later
+      success clears (TDD'd); Home shows "Metro's schedule feed is no longer
+      available" with the bundled-schedule fallback line.*
+- [x] **4.6** Airplane-mode pass: every screen works, everything reads `scheduled`,
+      nothing spins forever. *Done 2026-08-06 on hardware: Departures loads
+      offline from the device-refreshed index; a failed manual refresh lands in
+      the footer as "live unavailable — showing schedule" within a second (this
+      pass FOUND that the footer never recomposed — plain fields have no change
+      signal — fixed with AppGraph.dataGeneration collected by DataAgeFooter);
+      Alerts reads "Alerts unavailable — no connection." under its scope label.*
 - [ ] **4.7** **M4 — holidays.** After 2026-08-31, check whether 2026-09-07 carries
       `calendar_dates` rows. Bundle two tables if not (doc 02 §7).
 - [ ] **4.8** **M5 — `stop_id` stability.** Set-difference two consecutive picks.
+- [x] **4.9** Full-branch review before PR: 5 findings, 4 fixed test-first
+      2026-08-06. **Critical:** a job-first process (WorkManager cold start —
+      the normal daily case) left `AppGraph.prefs`/`referenceJson` dead for the
+      process's life because `ensure()` guarded everything on `loaded == null`
+      and `reloadFromDisk` set `loaded` alone — Home showed zero saved stops,
+      the save toggle no-op'd, Reference read "unavailable". Fixed with
+      per-field guards; verified on hardware by attaching the UI to the job's
+      own process (same pid) after a forced job-first run. Also: a captive
+      portal's non-zip 200 crashed the job silently outside the Refused path —
+      now caught as NeedsRetry (TDD); a Refused zip's 200 now clears the
+      revocation state so the two banners can't contradict (TDD); Home's
+      saved-stop phrase moved into HomeState so the screen can't render "next
+      not in this schedule" or "next no more today" (TDD). **Recorded, accepted:**
+      dismissNotice persists asynchronously — a re-show landing inside the
+      millisecond write window can resurrect the notice once; self-healing,
+      re-dismissible, not worth blocking the tap on the DataStore write.
 
 ---
 

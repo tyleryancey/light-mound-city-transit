@@ -3,6 +3,7 @@ package moundcity.transit.ui
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import com.thelightphone.sdk.LightScreen
 import com.thelightphone.sdk.LightViewModel
 import com.thelightphone.sdk.SealedLightActivity
@@ -24,22 +25,47 @@ class ReferenceScreen(sealedActivity: SealedLightActivity) :
     override val viewModelClass: Class<ReferenceViewModel> get() = ReferenceViewModel::class.java
     override fun createViewModel(): ReferenceViewModel = ReferenceViewModel()
 
-    private val json = Json { ignoreUnknownKeys = true }
+    /** Every throwing access lives here, once — a malformed bundled asset
+     *  degrades to a message, never a crash loop (review finding 11). */
+    private class Cards(
+        val faresAsOf: String,
+        val fareRows: List<Pair<String, String?>>,
+        val contactsCapturedOn: String,
+        val contactRows: List<Pair<String, String?>>,
+    )
+
+    private fun parseCards(): Cards? = runCatching {
+        val json = Json { ignoreUnknownKeys = true }
+        val fares = json.parseToJsonElement(AppGraph.referenceJson.getValue("fares")).jsonObject
+        val contacts = json.parseToJsonElement(AppGraph.referenceJson.getValue("contacts")).jsonObject
+        Cards(
+            faresAsOf = fares.getValue("as_of").jsonPrimitive.content,
+            fareRows = fares.getValue("fares").jsonArray.map { el ->
+                val f = el.jsonObject
+                "${f.getValue("label").jsonPrimitive.content}  ${f.getValue("price").jsonPrimitive.content}" to
+                    f.getValue("notes").jsonPrimitive.content.ifEmpty { null }
+            },
+            contactsCapturedOn = contacts.getValue("capturedOn").jsonPrimitive.content,
+            contactRows = contacts.getValue("contacts").jsonArray.map { el ->
+                val c = el.jsonObject
+                "${c.getValue("label").jsonPrimitive.content}  ${c.getValue("phone").jsonPrimitive.content}" to
+                    c.getValue("hours").jsonPrimitive.content.ifEmpty { null }
+            },
+        )
+    }.getOrNull()
 
     @Composable
     override fun Content() {
-        val fares = json.parseToJsonElement(AppGraph.referenceJson.getValue("fares")).jsonObject
-        val contacts = json.parseToJsonElement(AppGraph.referenceJson.getValue("contacts")).jsonObject
-        val fareRows = fares.getValue("fares").jsonArray.map { it.jsonObject }
-        val contactRows = contacts.getValue("contacts").jsonArray.map { it.jsonObject }
+        val cards = remember { parseCards() }
         MctPage(title = "Reference", onBack = { goBack() }) {
+            if (cards == null) {
+                MctRow(primary = "Reference data unavailable.", secondary = "The bundled reference files could not be read. Reinstalling restores them.")
+                return@MctPage
+            }
             LazyColumn {
-                item { MctRow(primary = "— fares · as of ${fares.getValue("as_of").jsonPrimitive.content} — verify before you rely on them —") }
-                items(fareRows) { f ->
-                    MctRow(
-                        primary = "${f.getValue("label").jsonPrimitive.content}  ${f.getValue("price").jsonPrimitive.content}",
-                        secondary = f.getValue("notes").jsonPrimitive.content,
-                    )
+                item { MctRow(primary = "— fares · as of ${cards.faresAsOf} — verify before you rely on them —") }
+                items(cards.fareRows) { (label, notes) ->
+                    MctRow(primary = label, secondary = notes)
                 }
                 item {
                     MctRow(
@@ -61,12 +87,9 @@ class ReferenceScreen(sealedActivity: SealedLightActivity) :
                         secondary = "2,978 of 5,118 stops are flagged not accessible in the current schedule.",
                     )
                 }
-                item { MctRow(primary = "— contacts · captured ${contacts.getValue("capturedOn").jsonPrimitive.content} · read-only —") }
-                items(contactRows) { c ->
-                    MctRow(
-                        primary = "${c.getValue("label").jsonPrimitive.content}  ${c.getValue("phone").jsonPrimitive.content}",
-                        secondary = c.getValue("hours").jsonPrimitive.content.ifEmpty { null },
-                    )
+                item { MctRow(primary = "— contacts · captured ${cards.contactsCapturedOn} · read-only —") }
+                items(cards.contactRows) { (label, hours) ->
+                    MctRow(primary = label, secondary = hours)
                 }
                 item { MctRow(primary = "— services —") }
                 item {

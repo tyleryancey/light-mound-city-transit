@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.thelightphone.sdk.ui.LightText
@@ -60,7 +61,8 @@ fun MctPage(
 /** Doc 02 §3.1: a data-age line at the bottom of every screen, never hidden. */
 @Composable
 fun DataAgeFooter() {
-    val now = Instant.now()
+    val dataGen by AppGraph.dataGeneration.collectAsState()
+    val now = remember(dataGen) { Instant.now() }
     val schedule = DataAge.scheduleLine(AppGraph.index, now.atZone(CHICAGO).toLocalDate())
     val live = AppGraph.liveSnapshot(now.epochSecond)
         ?.let { " · " + DataAge.liveLine(now.epochSecond, it.trips.headerTimestamp) }

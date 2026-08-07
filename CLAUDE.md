@@ -26,11 +26,20 @@ serverPackage = "com.lightos"
 (Byte-matches `tool/lighttool.toml`; Phase 2.1 executed 2026-08-05 — the final
 identity. Keep this block in sync with the real file on every change.)
 
-**Status:** **Phase 0 complete (2026-08-05)** — 0.1–0.9 done, 0.3 consciously skipped
-per its own optional-if-D4-stands terms. SDK pinned at `9aed6ff`; M1/M2/M6 measured;
-constraint sheet re-verified with 5 doc fixes; name locked. Ready for Phase 1.
-Measurement evidence: `docs/phase0/`.
-**Last updated:** 2026-08-05 (Phase 0 execution).
+**Status:** **Phases 0–4 built (2026-08-06).** Phase 0 (verification), Phase 1
+(JVM core, byte-lockstep index v3), Phase 2 (tool shell) merged via PRs #1–#8.
+Phase 3 (all screens, hardware-QA'd, 3.12 review pass) sits in **PR #9 — open,
+merge blocked by a GitHub Actions major outage**, retrigger + merge on recovery.
+Phase 4 (refresh & resilience) is complete on `feat/refresh` awaiting PR #10:
+4.1–4.6 ticked with on-device evidence — the daily job built `index-20260806.bin`
+on the LP3 from Metro's **live** feed and the cold start picked it up — plus the
+4.9 review pass (critical job-first-process init bug found, fixed, verified in
+the job's own pid). 4.7/4.8 (M4 holidays, M5 stop_id stability) wait for the
+2026-08-31 pick. **Live-feed findings:** Metro edits daily (rolling start
+dates); `calendar_dates` can be EMPTY (the Aug-8 Saturday moved into a real
+`319-T2` calendar row) — the zero-length-section path is proven on hardware.
+Full evidence: `docs/04-BUILD-PLAN.md`.
+**Last updated:** 2026-08-06 (Phase 4 execution).
 
 ### Handoff review, 2026-08-05 — what the final pass found and fixed
 

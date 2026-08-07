@@ -32,6 +32,7 @@ class DeparturesViewModel(private val stop: Int) : LightViewModel<Unit>() {
     val alertRoutes = MutableStateFlow<IntArray?>(null)
     val expired = MutableStateFlow(false)
     val saved = MutableStateFlow(false)
+    val saveNotice = MutableStateFlow<String?>(null)
 
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
@@ -91,7 +92,15 @@ class DeparturesViewModel(private val stop: Int) : LightViewModel<Unit>() {
         viewModelScope.launch(Dispatchers.IO) {
             val prefs = AppGraph.prefs ?: return@launch
             val code = AppGraph.index.stopCode(stop)
-            if (prefs.savedStops().contains(code)) prefs.removeSavedStop(code) else prefs.addSavedStop(code)
+            if (prefs.savedStops().contains(code)) {
+                prefs.removeSavedStop(code)
+                saveNotice.value = null
+            } else if (prefs.addSavedStop(code)) {
+                saveNotice.value = null
+            } else {
+                // The cap refusing silently was review finding 8.
+                saveNotice.value = "Saved stops are full (${moundcity.transit.data.Prefs.MAX_SAVED_STOPS})"
+            }
             saved.value = prefs.savedStops().contains(code)
         }
     }
@@ -110,6 +119,7 @@ class DeparturesScreen(sealedActivity: SealedLightActivity, private val stop: In
         val banner by viewModel.alertBanner.collectAsState()
         val expired by viewModel.expired.collectAsState()
         val saved by viewModel.saved.collectAsState()
+        val saveNotice by viewModel.saveNotice.collectAsState()
         val index = AppGraph.index
         MctPage(
             title = "${index.stopCode(stop)} ${index.stopName(stop)}",
@@ -119,6 +129,7 @@ class DeparturesScreen(sealedActivity: SealedLightActivity, private val stop: In
                 item {
                     MctRow(
                         primary = if (saved) "★ Saved — tap to remove" else "☆ Save this stop",
+                        secondary = saveNotice,
                         onTap = { viewModel.toggleSaved() },
                     )
                 }

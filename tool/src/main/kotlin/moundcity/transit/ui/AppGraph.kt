@@ -28,13 +28,23 @@ object AppGraph {
     @Volatile var referenceJson: Map<String, String> = emptyMap()
         private set
 
+    /** Everything above is plain fields; this is their change signal. The
+     *  footer collects it so a failed refresh is VISIBLE, not just recorded. */
+    val dataGeneration = kotlinx.coroutines.flow.MutableStateFlow(0)
+
     val index: ScheduleIndex get() = loaded!!.index
 
     fun ensure(ctx: SealedLightContext) {
-        if (loaded == null) {
+        // Each field guards itself: the refresh job can initialize `loaded`
+        // in a UI-less process (reloadFromDisk), and a later ensure() must
+        // still bring up prefs and the reference JSON — a single loaded-null
+        // guard left them dead for the process's life (review, Phase 4).
+        if (loaded == null || prefs == null) {
             synchronized(this) {
                 if (loaded == null) {
                     loaded = IndexStore(ctx.filesDir, { ctx.readAsset("index.bin") }).load()
+                }
+                if (prefs == null) {
                     prefs = Prefs(ctx.dataStore)
                     referenceJson = mapOf(
                         "fares" to String(ctx.readAsset("fares.json"), Charsets.UTF_8),
@@ -44,6 +54,14 @@ object AppGraph {
                 }
             }
         }
+    }
+
+    /** The refresh job swapped the on-disk index; make this process see it. */
+    fun reloadFromDisk(ctx: SealedLightContext) {
+        synchronized(this) {
+            loaded = IndexStore(ctx.filesDir, { ctx.readAsset("index.bin") }).load()
+        }
+        dataGeneration.value++
     }
 
     /** Manual refresh with the measured 30 s floor; false = floored, unchanged.
@@ -59,6 +77,8 @@ object AppGraph {
         } catch (e: Exception) {
             lastError = true
             false
+        } finally {
+            dataGeneration.value++
         }
     }
 

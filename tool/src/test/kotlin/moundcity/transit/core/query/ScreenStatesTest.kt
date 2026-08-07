@@ -97,8 +97,20 @@ class ScreenStatesTest {
         assertEquals(2, rows.size, "one row per saved stop")
         assertEquals("10624", rows[0].code.toString(), "stop code first")
         assertTrue("METROLINK" in rows[0].name, "station name attached")
-        assertEquals("11:50", rows[0].nextText, "next rail departure at the golden instant")
-        assertEquals("11:58", rows[1].nextText, "next live bus at 7855 (718)")
+        // The builder owns the whole phrase — the screen must never prepend
+        // "next" onto "no more today" or "not in this schedule" (review, Phase 4).
+        assertEquals("next 11:50", rows[0].nextText, "next rail departure at the golden instant")
+        assertEquals("next 11:58", rows[1].nextText, "next live bus at 7855 (718)")
+    }
+
+    @Test
+    fun aSavedStopMissingFromTheScheduleStaysVisible() {
+        val rows = HomeState.savedStopRows(
+            index, listOf(10624, 99999), Instant.parse("2026-08-03T16:49:12Z"), chicago,
+        )
+        assertEquals(2, rows.size, "a vanished saved stop is never silently dropped (4.4)")
+        assertEquals("stop 99999", rows[1].name, "no name to show — the code is the identity")
+        assertEquals("not in this schedule", rows[1].nextText, "the row says why there is no next time")
     }
 
     // --- alerts (3.6) ---

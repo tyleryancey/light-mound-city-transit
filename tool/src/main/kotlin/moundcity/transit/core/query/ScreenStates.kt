@@ -85,13 +85,18 @@ object HomeState {
         now: Instant,
         zone: ZoneId,
         rt: RtTrips? = null,
-    ): List<SavedStopRow> = savedCodes.mapNotNull { code ->
-        val stop = index.resolveStop(code) ?: return@mapNotNull null
+    ): List<SavedStopRow> = savedCodes.map { code ->
+        // A code the schedule no longer resolves keeps its row and says why —
+        // silently dropping a saved stop is the worst failure mode (doc 03 §5).
+        val stop = index.resolveStop(code)
+            ?: return@map SavedStopRow(code, "stop $code", "not in this schedule")
         val next = DepartureBoard.at(index, now, zone, stop, limit = 1, rt = rt).firstOrNull()
         SavedStopRow(
             code = code,
             name = index.stopName(stop),
-            nextText = next?.let { RowFormat.timeText(it.minute) } ?: "no more today",
+            // The builder owns the whole phrase — a screen prepending "next"
+            // would produce "next no more today" (review, Phase 4).
+            nextText = next?.let { "next ${RowFormat.timeText(it.minute)}" } ?: "no more today",
         )
     }
 }
