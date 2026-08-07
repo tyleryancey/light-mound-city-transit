@@ -14,6 +14,11 @@ object RouteLabels {
 
     fun isIllinois(routeId: String): Boolean = routeId.toIntOrNull() in ILLINOIS_IDS
 
+    /** Rail identity keys on short name: rail route_ids rotate at pick
+     *  changes (correction 3), MLB/MLR do not. */
+    fun isRail(index: ScheduleIndex, routeIdx: Int): Boolean =
+        index.routeShortName(routeIdx).let { it == "MLB" || it == "MLR" }
+
     fun displayShortName(index: ScheduleIndex, routeIdx: Int): String {
         val short = index.routeShortName(routeIdx)
         val sharers = (0 until index.routeCount).filter { index.routeShortName(it) == short }

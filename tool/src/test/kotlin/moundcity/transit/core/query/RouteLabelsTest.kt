@@ -58,4 +58,17 @@ class RouteLabelsTest {
         val il = (0 until index.routeCount).filter { RouteLabels.isIllinois(index.routeId(it)) }
         assertEquals(14, il.size, "route_ids 19855–19868 are the Illinois block")
     }
+
+    @Test
+    fun railIdentityComesFromShortNamesNotRouteIds() {
+        val rail = (0 until index.routeCount)
+            .filter { RouteLabels.isRail(index, it) }
+            .map { index.routeId(it) }
+            .toSet()
+        assertEquals(
+            setOf("19731B", "19731R", "19870B", "19870R"),
+            rail,
+            "MLB/MLR by short name — rail route_ids rotate at picks (correction 3)",
+        )
+    }
 }

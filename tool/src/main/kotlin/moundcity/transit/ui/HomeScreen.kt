@@ -1,59 +1,88 @@
 package moundcity.transit.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.thelightphone.sdk.InitialScreen
 import com.thelightphone.sdk.LightScreen
 import com.thelightphone.sdk.LightViewModel
 import com.thelightphone.sdk.SealedLightActivity
-import com.thelightphone.sdk.ui.LightText
-import com.thelightphone.sdk.ui.LightTextVariant
-import com.thelightphone.sdk.ui.LightTheme
-import com.thelightphone.sdk.ui.LightThemeController
-import com.thelightphone.sdk.ui.LightThemeTokens
+import com.thelightphone.sdk.SimpleLightScreen
+import java.time.Instant
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import androidx.lifecycle.viewModelScope
+import moundcity.transit.core.query.AlertMatch
+import moundcity.transit.core.query.HomeState
 
-class HomeViewModel : LightViewModel<Unit>()
+class HomeViewModel : LightViewModel<Unit>() {
 
-/**
- * Phase 2 shell: the wiring, not the product. The real Home screen (saved
- * stops, entry, browse, alerts, reference — build plan 3.1) replaces this
- * content in Phase 3.
- */
+    val savedRows = MutableStateFlow<List<HomeState.SavedStopRow>>(emptyList())
+    val alertCount = MutableStateFlow(0)
+
+    override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
+        super.onScreenShow(screen)
+        viewModelScope.launch(Dispatchers.IO) {
+            val prefs = AppGraph.prefs ?: return@launch
+            val saved = prefs.savedStops()
+            val now = Instant.now()
+            savedRows.value = HomeState.savedStopRows(
+                AppGraph.index, saved, now, CHICAGO,
+                AppGraph.liveSnapshot(now.epochSecond)?.trips,
+            )
+            val snapshot = AppGraph.snapshot
+            alertCount.value = if (snapshot == null) 0 else AlertMatch.forSavedStops(
+                snapshot.alerts, AppGraph.index,
+                saved.mapNotNull { AppGraph.index.resolveStop(it) },
+            ).size
+        }
+    }
+}
+
+/** Doc 02 §3.1: saved stops, entry, browse, alerts, reference. */
 @InitialScreen
 class HomeScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, HomeViewModel>(sealedActivity) {
 
-    override val viewModelClass: Class<HomeViewModel>
-        get() = HomeViewModel::class.java
-
+    override val viewModelClass: Class<HomeViewModel> get() = HomeViewModel::class.java
     override fun createViewModel(): HomeViewModel = HomeViewModel()
+
+    override fun willShow() {
+        AppGraph.ensure(lightContext)
+    }
 
     @Composable
     override fun Content() {
-        val themeColors by LightThemeController.colors.collectAsState()
-        LightTheme(colors = themeColors) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(LightThemeTokens.colors.background)
-                    .padding(32.dp),
-            ) {
-                LightText(
-                    text = "Mound City Transit",
-                    variant = LightTextVariant.Heading,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
-                LightText(
-                    text = "St. Louis departures. Screens arrive in Phase 3.",
-                    variant = LightTextVariant.Detail,
-                    lighten = true,
-                )
+        AppGraph.ensure(lightContext)
+        val saved by viewModel.savedRows.collectAsState()
+        val alertCount by viewModel.alertCount.collectAsState()
+        MctPage(title = "Mound City Transit") {
+            LazyColumn {
+                items(saved) { row ->
+                    MctRow(
+                        primary = "${row.code}  ${row.name}",
+                        secondary = "next ${row.nextText}",
+                        onTap = {
+                            val stop = AppGraph.index.resolveStop(row.code) ?: return@MctRow
+                            navigateTo({ sa -> DeparturesScreen(sa, stop) })
+                        },
+                    )
+                }
+                item { MctRow(primary = "Enter a stop number", onTap = { navigateTo(::StopEntryScreen) }) }
+                item { MctRow(primary = "Browse", onTap = { navigateTo(::BrowseScreen) }) }
+                item {
+                    MctRow(
+                        primary = when {
+                            alertCount == 1 -> "Alerts (1 affects your stops)"
+                            alertCount > 1 -> "Alerts ($alertCount affect your stops)"
+                            else -> "Alerts"
+                        },
+                        onTap = { navigateTo({ sa -> AlertsScreen(sa) }) },
+                    )
+                }
+                item { MctRow(primary = "Reference", onTap = { navigateTo(::ReferenceScreen) }) }
             }
         }
     }
