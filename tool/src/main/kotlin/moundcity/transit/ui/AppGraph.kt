@@ -36,6 +36,12 @@ object AppGraph {
      *  of those two lanes deliberately. The footer is the collector. */
     val dataGeneration = MutableStateFlow(0)
 
+    /** Bumped ONLY when the index swaps (reloadFromDisk) — the invalidation
+     *  key for caches derived from the static index. dataGeneration also bumps
+     *  on every realtime refresh, which would thrash those caches. */
+    @Volatile var indexGeneration = 0
+        private set
+
     @Volatile private var dailyJobEnqueued = false
 
     /** Once per process: UPDATE policy makes the re-enqueue idempotent anyway
@@ -76,6 +82,7 @@ object AppGraph {
         synchronized(this) {
             loaded = IndexStore(ctx.filesDir, { ctx.readAsset("index.bin") }).load()
         }
+        indexGeneration++
         dataGeneration.value++
     }
 

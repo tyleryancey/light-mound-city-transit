@@ -48,15 +48,22 @@ object RtFetcher {
             }
 
             override fun onResponse(call: Call, response: Response) {
-                response.use { resp ->
-                    if (!resp.isSuccessful) {
-                        future.completeExceptionally(IOException("HTTP ${resp.code} for $url"))
-                    } else {
+                // A body-read failure here is NOT redelivered to onFailure once
+                // onResponse has been signalled (OkHttp only logs it) — complete
+                // exceptionally ourselves or join() waits forever inside the
+                // @Synchronized refresh monitor, wedging refresh process-wide.
+                try {
+                    response.use { resp ->
+                        if (!resp.isSuccessful) throw IOException("HTTP ${resp.code} for $url")
                         future.complete(resp.body!!.bytes())
                     }
+                } catch (e: Exception) {
+                    future.completeExceptionally(e)
                 }
             }
         })
-        return future
+        // Belt over the 30 s callTimeout: no code path may leave this future
+        // incomplete, so no path may block refresh forever.
+        return future.orTimeout(35, java.util.concurrent.TimeUnit.SECONDS)
     }
 }

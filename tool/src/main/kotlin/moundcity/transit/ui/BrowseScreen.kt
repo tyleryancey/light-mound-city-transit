@@ -26,8 +26,9 @@ class BrowseViewModel : LightViewModel<Unit>() {
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
         // The catalogs are pure functions of the static index; the full-index
-        // scans rerun only when the daily job swaps it, not on every back-nav.
-        val gen = AppGraph.dataGeneration.value
+        // scans rerun only when the daily job swaps it (indexGeneration — a
+        // realtime refresh bump must not thrash them), not on every back-nav.
+        val gen = AppGraph.indexGeneration
         if (gen == loadedGeneration && groups.value != null) return
         viewModelScope.launch(Dispatchers.IO) {
             val index = AppGraph.index

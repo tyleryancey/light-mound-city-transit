@@ -44,8 +44,15 @@ class RouteViewModel(private val routeIdx: Int) : ReloadingViewModel() {
 
     /** Shape and stop list are pure functions of the static index — computing
      *  them is a full departures-section pass, so a direction toggle or a
-     *  vehicle refresh must not pay it again. Keyed by direction. */
+     *  vehicle refresh must not pay it again. Keyed by direction, invalidated
+     *  when the daily job swaps the index (indexGeneration), lock-confined. */
     private val geometry = HashMap<Int, Pair<IntArray?, List<Int>>>()
+    private var geometryGeneration = -1
+
+    /** A cached-direction reload finishes in microseconds while an uncached
+     *  one pays the full scan — without this guard a quick double-toggle lets
+     *  the slow, stale reload write state last. */
+    private val loadGeneration = java.util.concurrent.atomic.AtomicInteger()
 
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
@@ -58,12 +65,15 @@ class RouteViewModel(private val routeIdx: Int) : ReloadingViewModel() {
     }
 
     override fun reload() {
+        val gen = loadGeneration.incrementAndGet()
+        val dir = direction.value
         viewModelScope.launch(Dispatchers.IO) {
             val index = AppGraph.index
             val now = Instant.now()
-            expired.value = DataAge.isExpired(index, now, CHICAGO)
-            if (expired.value) { state.value = null; return@launch }
-            val dir = direction.value
+            val isExpired = DataAge.isExpired(index, now, CHICAGO)
+            if (gen != loadGeneration.get()) return@launch
+            expired.value = isExpired
+            if (isExpired) { state.value = null; return@launch }
             val isRail = RouteLabels.isRail(index, routeIdx)
             val live = AppGraph.liveSnapshot(now.epochSecond)
             val fixes = if (isRail || live == null) emptyList() else {
@@ -72,9 +82,16 @@ class RouteViewModel(private val routeIdx: Int) : ReloadingViewModel() {
                     t != null && index.tripRoute(t) == routeIdx && index.tripDirection(t) == dir
                 }
             }
-            val (shape, stops) = geometry.getOrPut(dir) {
-                index.routeShape(routeIdx, dir) to BrowseCatalog.routeStops(index, routeIdx, dir)
+            val indexGen = AppGraph.indexGeneration
+            val cached = synchronized(geometry) {
+                if (geometryGeneration != indexGen) { geometry.clear(); geometryGeneration = indexGen }
+                geometry[dir]
             }
+            val (shape, stops) = cached
+                ?: (index.routeShape(routeIdx, dir) to BrowseCatalog.routeStops(index, routeIdx, dir)).also {
+                    synchronized(geometry) { if (geometryGeneration == indexGen) geometry[dir] = it }
+                }
+            if (gen != loadGeneration.get()) return@launch
             state.value = ViewerState(
                 shape = shape,
                 stopIdxs = stops,

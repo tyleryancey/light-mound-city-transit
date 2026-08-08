@@ -93,9 +93,17 @@ class HomeScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, HomeVi
                     MctRow(
                         primary = "${row.code}  ${row.name}",
                         secondary = row.nextText,
-                        // A vanished stop's row is visibly inert, not a fake target.
-                        onTap = row.stopIdx?.let { stop ->
-                            { navigateTo({ sa -> DeparturesScreen(sa, stop) }) }
+                        // A vanished stop's row is visibly inert, not a fake
+                        // target — but a live row re-resolves at TAP time: the
+                        // daily job can swap the index while Home rests, and a
+                        // build-time stopIdx would then point into the wrong
+                        // (or a smaller) stop set.
+                        onTap = if (row.stopIdx == null) null else {
+                            {
+                                AppGraph.index.resolveStop(row.code)?.let { stop ->
+                                    navigateTo({ sa -> DeparturesScreen(sa, stop) })
+                                }
+                            }
                         },
                     )
                 }
