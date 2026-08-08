@@ -167,10 +167,22 @@ the route's own stops, and — for buses — the agency's own published vehicle
 positions, capped by the feed itself (127 in the reference capture). There is
 **no basemap, no map tiles, no geocoding, no routing, and no user location**:
 the screen shows where the bus is, never where the rider is, and the tool still
-requests no location permission. One route at a time, fit-to-screen, refresh
-manual with a 30 s floor — there is still nothing to check compulsively. The
-original "3.5 MB of shapes" objection fell to measurement; the index grows by
-~2%, not by megabytes.
+requests no location permission. One route at a time, refresh manual with a
+30 s floor — there is still nothing to check compulsively. The original
+"3.5 MB of shapes" objection fell to measurement; the index grows by ~2%, not
+by megabytes.
+
+*(Extended 2026-08-07, D13.)* The viewer now also draws a **context layer** —
+the other routes whose bounding box overlaps the viewed one, faint and thin,
+plus a one-mile reference grid — with a north arrow and a scale bar. Every
+line on that screen is still **the agency's own published shape data already
+in the APK**: nothing is fetched, no tile server is contacted, no third-party
+map data is bundled, and the tool still never draws the rider. Fit-to-screen
+is now the *default* rather than the only state — pinch zooms to 8× and a
+double-tap returns to fit — and glyphs are tappable, which navigates to a
+stop or a trip. A self-drawn street layer built from open map data was
+considered and **deferred to its own decision**, so that the size, licence,
+and attribution can be weighed on measured numbers rather than assumed.
 
 ---
 
@@ -182,7 +194,7 @@ Every surface, with its bound. **Re-checked against the shipped code 2026-08-07
 | Surface | Bound | Enforced |
 |---|---|---|
 | Departures at a stop | 8 | `limit = 8` in `DeparturesViewModel.reload` |
-| Route viewer (D12) | one route+direction at a time; ≤120 bundled polylines; vehicle dots ≤ the feed's own count (127 in the reference capture) | the index carries exactly one shape per pair (`ShapeSelect`); vehicles filtered to the viewed route+direction |
+| Route viewer (D12, D13) | one route+direction at a time; context layer ≤ the other 61 routes' bundled shapes (nothing new bundled or fetched); vehicle dots ≤ the feed's own count (127 in the reference capture); zoom clamped 1–8× with double-tap reset | the index carries exactly one shape per pair (`ShapeSelect`); `ContextRoutes` selects by bbox overlap from the same 120; vehicles filtered to the viewed route+direction; `Viewport` clamps zoom and pan (pinned by test) |
 | Saved stops | 12 | `Prefs.MAX_SAVED_STOPS`, rejected at add with a visible "Saved stops are full (12)" |
 | Home rows | ≤12 saved + at most 2 status rows (refresh notice, revoked banner) + 4 fixed entries | saved-stop cap; single-notice Prefs slots |
 | Remaining stops on a trip | end of line (max 141 in the feed) | trip length |

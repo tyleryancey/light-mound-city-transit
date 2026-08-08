@@ -462,3 +462,42 @@ A rider at a St. Louis stop with no signal types the number on the sign and gets
 accurate timetable with an honest age on it. With signal, buses gain a live time and
 an early/late figure, trains say `scheduled`, alerts appear, and the tool never shows
 a number it cannot stand behind.
+
+---
+
+## D13 — route viewer 2.0 (post-Phase-5, 2026-08-07)
+
+Plan: `docs/superpowers/plans/2026-08-07-route-viewer-2.md`. Ten tasks, all TDD
+where the harness reaches; **zero index-format changes**, so no Python lockstep work.
+
+- [x] **D13.1** `Viewport` — zoom clamped 1–8×, pan clamped to the content edges,
+      inverse for hit-testing, 1× snapping pan home so fit stays exact.
+- [x] **D13.2** `RouteBearing` — cardinal from net displacement, cos-corrected,
+      null under the 30%-of-diagonal loop guard. *Verified on real geometry: the
+      Blue Line's two directions resolve east/west; a closed square refuses.*
+- [x] **D13.3** `ScaleBar` + `ShapeProjection.metersPerPixel` — largest nice-mile
+      rung that fits, or none at all.
+- [x] **D13.4** `GlyphHitTest` — nearest within a finger radius, never a guess.
+- [x] **D13.5** `ContextRoutes`, `BrowseCatalog.isTransitCenter`,
+      `representativeTrip` (routeStops now delegates). *The test caught a real one:
+      the rail pick twins carry identical geometry, so an unfiltered context layer
+      painted the viewed line twice — identical shapes are skipped.*
+- [x] **D13.6** Honest `scheduled`: `not started yet` vs `no live data`, decided by
+      `ScheduleIndex.tripFirstMinute` (one lazy cached pass), **only** when a live
+      snapshot exists; rail stays plain (D2, pinned by the existing golden).
+- [x] **D13.7** `AlertMatch.Matched.routeIdxs` — the resolution `forRoutes` already
+      did, kept for the alert→viewer links.
+- [x] **D13.8** Viewer rework: context layer + graticule behind the polyline, center
+      squares, vehicle dots, north arrow, scale bar, legend row, pinch/drag/double-tap,
+      taps resolved through the same projection the draw used.
+- [x] **D13.9** Linking: TripDetail "View route →"; AlertDetail one row per named route.
+- [x] **D13.10** Docs + device QA + review + PR #13. *QA on the LP3 found two real
+      bugs: Compose `Canvas` does not clip, so the context layer (which extends well
+      past the viewed bbox) painted over the entire screen — `clipToBounds`; and the
+      direction line read "to TO CENTRAL WEST END TC" because Metro's headsigns
+      already begin "TO" — the headsign now renders verbatim after the bearing.
+      Re-verified: clean clip, correct line, scale bar and legend present, and the
+      TripDetail → viewer link works.*
+
+**Known behavior, accepted:** the canvas consumes drags (that is what pans it), so
+the page scrolls from the rows above and below it rather than from the map itself.

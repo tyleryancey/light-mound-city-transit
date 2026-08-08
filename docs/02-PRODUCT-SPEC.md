@@ -269,11 +269,24 @@ A schematic, not a map: Compose Canvas draws the route's decimated polyline
 (~60 KB bundled for all 120 route+direction pairs), its stops as hollow circles,
 and — for bus routes — vehicle dots as filled glyphs, from the last manual
 refresh, with the fix age printed. Entry is Browse → route, with a direction
-toggle. Fit-to-screen only; no pan, no zoom. Rail shows the line and its
-stations under the header "scheduled — no live train positions". There is no
-basemap, no tiles, and **no user location anywhere on the screen** — it shows
-where the bus is, never where you are. Expiry replaces this screen exactly as it
-replaces every list. Spec: `docs/superpowers/specs/2026-08-05-route-viewer-design.md`.
+toggle. Rail shows the line and its stations under the header "scheduled — no
+live train positions". There is no basemap, no tiles, and **no user location
+anywhere on the screen** — it shows where the bus is, never where you are.
+Expiry replaces this screen exactly as it replaces every list. Spec:
+`docs/superpowers/specs/2026-08-05-route-viewer-design.md`.
+
+**Extended by D13 (2026-08-07)**, spec
+`docs/superpowers/specs/2026-08-07-route-viewer-2.md`: a north arrow and a
+scale bar; a direction line reading the computed bearing plus the
+representative trip's own headsign ("northbound · TO CENTRAL WEST END TC"),
+with the bearing suppressed on loops that have no honest one; a **context
+layer** of the other routes whose area overlaps, drawn faint behind the viewed
+line, over a one-mile grid — still the agency's own bundled geometry, nothing
+fetched; transit centers as filled **squares** against hollow stop circles and
+filled vehicle dots, named in a legend; **pinch/drag zoom to 8× with a
+double-tap reset** (fit-to-screen becomes the default, not the only state);
+and every glyph tappable — a stop opens its departures, a bus opens its trip.
+Trip detail and alert detail both link back into the viewer.
 
 ## 4. Data age and failing visibly
 
