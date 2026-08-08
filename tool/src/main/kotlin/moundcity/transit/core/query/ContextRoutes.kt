@@ -12,6 +12,12 @@ object ContextRoutes {
 
     fun select(index: ScheduleIndex, routeIdx: Int, directionId: Int): List<IntArray> {
         val viewed = index.routeShape(routeIdx, directionId) ?: return emptyList()
+        // The pick twins' geometry matches per DIRECTION (a route's other
+        // direction is the reverse, which contentEquals does not match), so
+        // the exclusion has to consider both of the viewed route's shapes —
+        // otherwise viewing direction 2 lets the twin's direction-1 shape
+        // through and paints the viewed line twice (review finding).
+        val viewedOther = index.routeShape(routeIdx, 1 - directionId)
         val vb = bboxOf(viewed)
         val out = mutableListOf<IntArray>()
         for (r in 0 until index.routeCount) {
@@ -19,8 +25,8 @@ object ContextRoutes {
             val shape = index.routeShape(r, 0) ?: index.routeShape(r, 1) ?: continue
             // The rail pick twins (19731B/19870B — one line, two route_ids
             // across the service-change transition) carry identical geometry.
-            // Drawing it as "context" would just paint the viewed line twice.
             if (shape.contentEquals(viewed)) continue
+            if (viewedOther != null && shape.contentEquals(viewedOther)) continue
             if (intersects(bboxOf(shape), vb)) out.add(shape)
         }
         return out

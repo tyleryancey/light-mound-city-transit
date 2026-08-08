@@ -152,6 +152,23 @@ class ViewerInteractionTest {
         a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3]
 
     @Test
+    fun contextRoutesExcludeThePickTwinInBothDirections() {
+        // The twins match per direction and a route's other direction is the
+        // reverse array, so an exclusion that only checked the viewed shape
+        // let the twin through on direction 2 (review finding).
+        val index = QueryTestData.index
+        val blue = index.routeIndexOf("19731B")!!
+        for (dir in 0..1) {
+            val shapes = ContextRoutes.select(index, blue, dir)
+            val twin = index.routeShape(index.routeIndexOf("19870B")!!, 0)!!
+            assertTrue(
+                shapes.none { it.contentEquals(twin) },
+                "direction ${dir + 1}: the same line under its other route_id is not context",
+            )
+        }
+    }
+
+    @Test
     fun contextRoutesIntersectAndExcludeSelf() {
         val index = QueryTestData.index
         val blue = index.routeIndexOf("19731B")!!

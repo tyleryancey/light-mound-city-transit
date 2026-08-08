@@ -109,9 +109,11 @@ class RouteViewModel(private val routeIdx: Int) : ReloadingViewModel() {
 
     fun canvasSized(width: Float, height: Float) {
         if (width <= 0f || height <= 0f) return
-        if (canvasW == width && canvasH == height) return
-        canvasW = width
-        canvasH = height
+        synchronized(this) {
+            if (canvasW == width && canvasH == height) return
+            canvasW = width
+            canvasH = height
+        }
         viewport.value = Viewport(width, height)
         recomputeScale()
     }
@@ -127,15 +129,22 @@ class RouteViewModel(private val routeIdx: Int) : ReloadingViewModel() {
         recomputeScale()
     }
 
+    /** Synchronized: called from the reload coroutine and from gestures on
+     *  main. The drawn bar is always computed fresh in the draw, so only this
+     *  label could go stale — serializing keeps it honest, and reading the
+     *  size as a pair under the lock rules out a torn width/height. */
+    @Synchronized
     private fun recomputeScale() {
         val shape = state.value?.shape
-        if (shape == null || canvasW <= 0f) {
+        val w = canvasW
+        val h = canvasH
+        if (shape == null || w <= 0f || h <= 0f) {
             scaleLabel.value = null
             return
         }
-        val proj = ShapeProjection.fit(shape, canvasW, canvasH, CANVAS_PAD)
+        val proj = ShapeProjection.fit(shape, w, h, CANVAS_PAD)
         val zoom = viewport.value?.zoom ?: 1f
-        scaleLabel.value = ScaleBar.pick(proj.metersPerPixel / zoom, canvasW * 0.5f)?.label
+        scaleLabel.value = ScaleBar.pick(proj.metersPerPixel / zoom, w * 0.5f)?.label
     }
 
     override fun reload() {
@@ -215,12 +224,12 @@ class RouteViewModel(private val routeIdx: Int) : ReloadingViewModel() {
             onGlyphTap?.invoke(GlyphTap.StopTap(s.stopIdxs[hit]))
             return
         }
-        // A vehicle opens its whole run, from the first stop — the screen that
-        // already knows how to say where the bus is.
+        // A vehicle opens its whole run — fromSeq 0 keeps every stop, and the
+        // cached first minute titles it. Deliberately NOT tripStops(): this
+        // runs on the tap (main) thread and that is a full-section scan.
         val veh = s.vehicles[hit - s.stopIdxs.size]
         val tripIdx = veh.tripId.toIntOrNull()?.let { index.tripIndexOf(it) } ?: return
-        val first = index.tripStops(tripIdx, fromSeq = 0).firstOrNull() ?: return
-        onGlyphTap?.invoke(GlyphTap.VehicleTap(tripIdx, first.seq, first.minute))
+        onGlyphTap?.invoke(GlyphTap.VehicleTap(tripIdx, fromSeq = 0, minute = index.tripFirstMinute(tripIdx)))
     }
 }
 
@@ -267,7 +276,7 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
                 }
                 item {
                     MctRow(
-                        primary = directionLine(state),
+                        primary = directionLine(state, dir),
                         secondary = state?.let { s ->
                             if (s.isRail) "scheduled — no live train positions"
                             else s.liveLine?.let { "${RowFormat.counted(s.vehicles.size, "vehicle")} · $it" }
@@ -291,13 +300,23 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
                                 // screen (found on device).
                                 .clipToBounds()
                                 .onSizeChanged { viewModel.canvasSized(it.width.toFloat(), it.height.toFloat()) }
-                                .pointerInput(s) {
+                                // Keyed on Unit, not the state: ViewerState's
+                                // liveLine changes on every reload, and a
+                                // changing key cancels and relaunches both
+                                // detectors mid-gesture (review finding). The
+                                // handlers read fresh VM state anyway.
+                                .pointerInput(Unit) {
                                     detectTapGestures(
                                         onDoubleTap = { viewModel.resetViewport() },
                                         onTap = { at -> viewModel.tapAt(at.x, at.y) },
                                     )
                                 }
-                                .pointerInput(s) {
+                                // Keyed on Unit, not the state: ViewerState's
+                                // liveLine changes on every reload, and a
+                                // changing key cancels and relaunches both
+                                // detectors mid-gesture (review finding). The
+                                // handlers read fresh VM state anyway.
+                                .pointerInput(Unit) {
                                     detectTransformGestures { centroid, pan, zoom, _ ->
                                         viewModel.gesture(centroid.x, centroid.y, pan.x, pan.y, zoom)
                                     }
@@ -351,10 +370,12 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
     }
 
     /** Headsigns are feed data rendered verbatim — and Metro's already begin
-     *  "TO …", so no preposition of ours goes in front of them. */
-    private fun directionLine(state: RouteViewModel.ViewerState?): String {
+     *  "TO …", so no preposition of ours goes in front of them. Four routes
+     *  have geometry for one direction only; there the fallback must still
+     *  name the direction the user is actually on (review finding). */
+    private fun directionLine(state: RouteViewModel.ViewerState?, dir: Int): String {
         val parts = listOfNotNull(state?.bearing, state?.headsign?.takeIf { it.isNotEmpty() })
-        val head = if (parts.isEmpty()) "direction 1 of 2" else parts.joinToString(" · ")
+        val head = if (parts.isEmpty()) "direction ${dir + 1} of 2" else parts.joinToString(" · ")
         return "$head — tap to switch"
     }
 }
