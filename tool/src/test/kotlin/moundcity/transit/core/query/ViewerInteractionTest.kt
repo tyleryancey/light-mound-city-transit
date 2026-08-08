@@ -131,4 +131,58 @@ class ViewerInteractionTest {
         assertNull(GlyphHitTest.nearest(xs, ys, x = 210f, y = 300f, radiusPx = 48f), "outside every radius is a no-op, never a guess")
         assertNull(GlyphHitTest.nearest(FloatArray(0), FloatArray(0), 0f, 0f, 48f), "no glyphs, no hit")
     }
+
+    // --- ContextRoutes and the shared route/center helpers (D13.5) ---
+
+    private fun bbox(shape: IntArray): IntArray {
+        var minLat = Int.MAX_VALUE
+        var maxLat = Int.MIN_VALUE
+        var minLon = Int.MAX_VALUE
+        var maxLon = Int.MIN_VALUE
+        var i = 0
+        while (i < shape.size) {
+            minLat = minOf(minLat, shape[i]); maxLat = maxOf(maxLat, shape[i])
+            minLon = minOf(minLon, shape[i + 1]); maxLon = maxOf(maxLon, shape[i + 1])
+            i += 2
+        }
+        return intArrayOf(minLat, minLon, maxLat, maxLon)
+    }
+
+    private fun bboxesIntersect(a: IntArray, b: IntArray): Boolean =
+        a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3]
+
+    @Test
+    fun contextRoutesIntersectAndExcludeSelf() {
+        val index = QueryTestData.index
+        val blue = index.routeIndexOf("19731B")!!
+        val viewed = index.routeShape(blue, 0)!!
+        val context = ContextRoutes.select(index, blue, 0)
+        assertTrue(context.isNotEmpty(), "routes cross the Blue line — the context layer cannot be empty")
+        assertTrue(context.none { it.contentEquals(viewed) }, "the viewed shape is never its own context")
+        assertTrue(context.size <= index.routeCount - 1, "bounded by the other routes; got ${context.size}")
+        val vb = bbox(viewed)
+        assertTrue(context.all { bboxesIntersect(bbox(it), vb) }, "every context shape's bbox intersects the viewed one")
+    }
+
+    @Test
+    fun transitCenterIdentityHasOneOwner() {
+        assertTrue(BrowseCatalog.isTransitCenter("CIVIC CENTER TRANSIT CENTER"), "the name-merge convention")
+        assertTrue(!BrowseCatalog.isTransitCenter("GRAVOIS @ BATES EB"), "an ordinary stop is not a center")
+    }
+
+    @Test
+    fun representativeTripBacksRouteStopsAndCarriesTheHeadsign() {
+        val index = QueryTestData.index
+        val blue = index.routeIndexOf("19731B")!!
+        val trip = BrowseCatalog.representativeTrip(index, blue, 0)!!
+        assertEquals(
+            BrowseCatalog.routeStops(index, blue, 0),
+            index.tripStops(trip, fromSeq = 0).map { it.stopIdx }.distinct(),
+            "routeStops is exactly the representative trip's stop sequence",
+        )
+        assertTrue(
+            index.headsign(index.tripHeadsign(trip)).isNotEmpty(),
+            "and it carries the headsign the direction line shows",
+        )
+    }
 }

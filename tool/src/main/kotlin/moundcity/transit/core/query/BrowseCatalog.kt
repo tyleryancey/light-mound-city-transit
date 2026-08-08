@@ -21,10 +21,14 @@ object BrowseCatalog {
             .map { Station(index.stopName(it), it) }
             .sortedBy { it.name }
 
+    /** The "TRANSIT CENTER" naming convention — one owner, shared by the
+     *  browse merge and D13's center glyph. */
+    fun isTransitCenter(stopName: String): Boolean = "TRANSIT CENTER" in stopName
+
     /** "TRANSIT CENTER" stops merged on the name up to and including the phrase. */
     fun transitCenters(index: ScheduleIndex): List<Center> =
         (0 until index.stopCount)
-            .filter { "TRANSIT CENTER" in index.stopName(it) }
+            .filter { isTransitCenter(index.stopName(it)) }
             .groupBy { index.stopName(it).substringBefore("TRANSIT CENTER") + "TRANSIT CENTER" }
             .map { (name, idxs) -> Center(name, idxs) }
             .sortedBy { it.name }
@@ -48,11 +52,11 @@ object BrowseCatalog {
         )
     }
 
-    /** The route's stop sequence for a direction: its longest trip's stops
-     * (doc 02 §3.4 — each route opens its stop list by direction). Row counts
+    /** The route's longest trip for a direction — the sequence its stop list
+     * shows, and (D13) the trip whose headsign names the direction. Row counts
      * come from one pass over the departures section; tripStops() is itself a
      * full scan, so calling it per candidate trip would be quadratic. */
-    fun routeStops(index: ScheduleIndex, routeIdx: Int, direction: Int): List<Int> {
+    fun representativeTrip(index: ScheduleIndex, routeIdx: Int, direction: Int): Int? {
         val all = index.allServiceIdxs()
         val counts = IntArray(index.tripCount)
         for (stop in 0 until index.stopCount) {
@@ -67,8 +71,14 @@ object BrowseCatalog {
         for (t in 0 until index.tripCount) {
             if (counts[t] > bestSize) { bestSize = counts[t]; bestTrip = t }
         }
-        if (bestTrip < 0) return emptyList()
-        return index.tripStops(bestTrip, fromSeq = 0).map { it.stopIdx }.distinct()
+        return if (bestTrip < 0) null else bestTrip
+    }
+
+    /** The route's stop sequence for a direction (doc 02 §3.4 — each route
+     * opens its stop list by direction). */
+    fun routeStops(index: ScheduleIndex, routeIdx: Int, direction: Int): List<Int> {
+        val trip = representativeTrip(index, routeIdx, direction) ?: return emptyList()
+        return index.tripStops(trip, fromSeq = 0).map { it.stopIdx }.distinct()
     }
 
     private fun stopsServedBy(index: ScheduleIndex, pred: (Int) -> Boolean): List<Int> {
