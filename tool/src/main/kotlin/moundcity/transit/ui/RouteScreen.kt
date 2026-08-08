@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -284,6 +285,11 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(280.dp)
+                                // The context layer extends well past the viewed
+                                // route's bbox, and Canvas does not clip on its
+                                // own — without this it paints over the whole
+                                // screen (found on device).
+                                .clipToBounds()
                                 .onSizeChanged { viewModel.canvasSized(it.width.toFloat(), it.height.toFloat()) }
                                 .pointerInput(s) {
                                     detectTapGestures(
@@ -322,7 +328,7 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
                 }
                 item {
                     MctRow(
-                        primary = "○ stop   ■ transit center   ● bus",
+                        primary = "○ stop · ■ center · ● bus",
                         secondary = listOfNotNull(
                             "north is up",
                             scaleLabel?.let { "bar = $it" },
@@ -344,8 +350,10 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
         }
     }
 
+    /** Headsigns are feed data rendered verbatim — and Metro's already begin
+     *  "TO …", so no preposition of ours goes in front of them. */
     private fun directionLine(state: RouteViewModel.ViewerState?): String {
-        val parts = listOfNotNull(state?.bearing, state?.headsign?.let { "to $it" })
+        val parts = listOfNotNull(state?.bearing, state?.headsign?.takeIf { it.isNotEmpty() })
         val head = if (parts.isEmpty()) "direction 1 of 2" else parts.joinToString(" · ")
         return "$head — tap to switch"
     }
