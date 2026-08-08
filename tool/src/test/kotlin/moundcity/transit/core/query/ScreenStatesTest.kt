@@ -193,6 +193,12 @@ class ScreenStatesTest {
         val mine = AlertMatch.forRoutes(alerts, index, routes)
         assertTrue(mine.size < all.size, "saved-stop filtering narrows; got ${mine.size}")
         assertTrue(all.all { it.header.isNotEmpty() }, "header text always says what happened")
+        assertTrue(mine.all { it.routeIdxs.isNotEmpty() }, "a matched alert carries the routes it matched on (D13 linking)")
+        assertEquals(
+            mine[0].routeLabels,
+            mine[0].routeIdxs.map { RouteLabels.displayShortName(index, it) }.distinct(),
+            "the labels are exactly those carried indexes' display names",
+        )
     }
 
     @Test

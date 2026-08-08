@@ -148,7 +148,14 @@ object StopRoutes {
 /** Alert filtering and window phrasing (doc 02 §3.5). */
 object AlertMatch {
 
-    data class Matched(val header: String, val description: String, val routeLabels: List<String>, val alert: RtAlert)
+    data class Matched(
+        val header: String,
+        val description: String,
+        val routeLabels: List<String>,
+        /** The routes this alert named, resolved — D13's alert→viewer links. */
+        val routeIdxs: List<Int>,
+        val alert: RtAlert,
+    )
 
     /** Home's badge source. No saved stops = zero matches — an empty route
      *  union must never fall into the null show-everything sentinel. */
@@ -192,6 +199,7 @@ object AlertMatch {
                 header = a.header,
                 description = a.description,
                 routeLabels = idxs.map { RouteLabels.displayShortName(index, it) }.distinct(),
+                routeIdxs = idxs,
                 alert = a,
             )
         }
