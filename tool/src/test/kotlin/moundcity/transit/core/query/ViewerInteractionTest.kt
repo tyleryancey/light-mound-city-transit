@@ -51,4 +51,49 @@ class ViewerInteractionTest {
         assertTrue(!v.isIdentity, "a pinched, dragged viewport is not fit")
         assertTrue(v.reset().isIdentity, "double-tap resets to fit")
     }
+
+    // --- RouteBearing (D13.2) ---
+
+    @Test
+    fun bearingFollowsNetDisplacement() {
+        val east = intArrayOf(38_600_000, -90_300_000, 38_601_000, -90_100_000)
+        assertEquals("eastbound", RouteBearing.of(east), "dominant +lon (cos-corrected) reads eastbound")
+        assertEquals(
+            "westbound",
+            RouteBearing.of(intArrayOf(38_601_000, -90_100_000, 38_600_000, -90_300_000)),
+            "reversed reads westbound",
+        )
+        val north = intArrayOf(38_500_000, -90_200_000, 38_700_000, -90_201_000)
+        assertEquals("northbound", RouteBearing.of(north), "dominant +lat reads northbound")
+        assertEquals(
+            "southbound",
+            RouteBearing.of(intArrayOf(38_700_000, -90_201_000, 38_500_000, -90_200_000)),
+            "reversed reads southbound",
+        )
+    }
+
+    @Test
+    fun loopsRefuseABearing() {
+        // A closed square: large bbox, near-zero net displacement.
+        val loop = intArrayOf(
+            38_600_000, -90_300_000, 38_700_000, -90_300_000,
+            38_700_000, -90_200_000, 38_600_000, -90_200_000,
+            38_600_100, -90_299_900,
+        )
+        assertNull(RouteBearing.of(loop), "a loop must not claim a direction (30% displacement rule)")
+        assertNull(RouteBearing.of(intArrayOf(38_600_000, -90_200_000)), "a single point has no direction")
+    }
+
+    @Test
+    fun theBlueLineDirectionsAreOppositeEastWest() {
+        val index = QueryTestData.index
+        val blue = index.routeIndexOf("19731B")!!
+        val d0 = RouteBearing.of(index.routeShape(blue, 0)!!)
+        val d1 = RouteBearing.of(index.routeShape(blue, 1)!!)
+        assertEquals(
+            setOf("eastbound", "westbound"),
+            setOf(d0, d1),
+            "MetroLink Blue runs east-west; the two directions must disagree",
+        )
+    }
 }
