@@ -85,6 +85,16 @@ class ScreenStatesTest {
             "doc 02 §3.2 exact",
         )
         assertEquals("canceled", RowFormat.statusText(RowStatus.Canceled, nowEpoch = 0, headerTs = 0), "shown struck, never removed")
+        assertEquals(
+            "scheduled · not started yet",
+            RowFormat.statusText(RowStatus.ScheduledNotStarted, nowEpoch = 0, headerTs = 0),
+            "live data exists; this trip simply has not left its first stop (D13)",
+        )
+        assertEquals(
+            "scheduled · no live data",
+            RowFormat.statusText(RowStatus.ScheduledNoData, nowEpoch = 0, headerTs = 0),
+            "should be running, feed silent — the measured ~9% of in-service buses",
+        )
     }
 
     @Test

@@ -70,6 +70,8 @@ object RowFormat {
 
     fun statusText(status: RowStatus, nowEpoch: Long, headerTs: Long): String = when (status) {
         is RowStatus.Scheduled -> "scheduled"
+        is RowStatus.ScheduledNotStarted -> "scheduled · not started yet"
+        is RowStatus.ScheduledNoData -> "scheduled · no live data"
         is RowStatus.Canceled -> "canceled"
         is RowStatus.Live -> {
             val age = (nowEpoch - headerTs).coerceAtLeast(0)

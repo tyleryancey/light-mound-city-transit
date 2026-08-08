@@ -131,6 +131,29 @@ class ScheduleIndex(container: ByteArray) {
     fun tripDirection(tripIdx: Int): Int = tripMeta.get(tripIdx * 5 + 2).toInt() and 0xFF
     fun tripHeadsign(tripIdx: Int): Int = tripMeta.getShort(tripIdx * 5 + 3).toInt() and 0xFFFF
 
+    /**
+     * Each trip's first departure minute — one lazy pass over the departures
+     * section, cached for the process. D13 uses it to tell "hasn't left yet"
+     * apart from "should be running but the feed is silent".
+     */
+    private val firstMinutes: IntArray by lazy {
+        val out = IntArray(tripCount) { Int.MAX_VALUE }
+        for (stop in 0 until stopCount) {
+            val start = stopOffsets.getInt(stop * 4)
+            val end = stopOffsets.getInt((stop + 1) * 4)
+            var p = start
+            while (p < end) {
+                val minute = departures.getShort(p).toInt() and 0xFFFF
+                val t = departures.getShort(p + 2).toInt() and 0xFFFF
+                if (minute < out[t]) out[t] = minute
+                p += 6
+            }
+        }
+        out
+    }
+
+    fun tripFirstMinute(tripIdx: Int): Int = firstMinutes[tripIdx]
+
     // --- v2: route ids, services, calendar ---
 
     private val routeIds = StringTable(sections.getValue("route_ids"))
