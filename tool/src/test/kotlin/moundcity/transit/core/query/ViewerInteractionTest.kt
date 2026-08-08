@@ -119,4 +119,16 @@ class ViewerInteractionTest {
         // Zoom divides meters-per-pixel: at 4× the same canvas spans ¼ the ground.
         assertEquals("¼ mi", ScaleBar.pick(2.783 / 4.0, 600f)!!.label, "the zoomed-in bar shrinks honestly")
     }
+
+    // --- GlyphHitTest (D13.4) ---
+
+    @Test
+    fun hitTestPicksTheNearestWithinTheFingerRadius() {
+        val xs = floatArrayOf(100f, 200f, 300f)
+        val ys = floatArrayOf(100f, 100f, 100f)
+        assertEquals(1, GlyphHitTest.nearest(xs, ys, x = 210f, y = 108f, radiusPx = 48f), "the nearest glyph wins")
+        assertEquals(0, GlyphHitTest.nearest(xs, ys, x = 149f, y = 100f, radiusPx = 60f), "near-ties break to the nearer: 49 < 51")
+        assertNull(GlyphHitTest.nearest(xs, ys, x = 210f, y = 300f, radiusPx = 48f), "outside every radius is a no-op, never a guess")
+        assertNull(GlyphHitTest.nearest(FloatArray(0), FloatArray(0), 0f, 0f, 48f), "no glyphs, no hit")
+    }
 }
