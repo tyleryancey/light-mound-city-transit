@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import moundcity.transit.core.query.AlertMatch
+import moundcity.transit.core.query.RouteLabels
 import moundcity.transit.core.query.StopRoutes
 
 class AlertsViewModel(private val routeFilter: IntArray?) : LightViewModel<Unit>() {
@@ -95,7 +96,11 @@ class AlertsScreen(sealedActivity: SealedLightActivity, private val routeFilter:
                         secondary = a.routeLabels.joinToString(" · ").ifEmpty { null },
                         onTap = {
                             navigateTo({ sa ->
-                                AlertDetailScreen(sa, a.header, a.description, AlertMatch.effectiveFrom(a.alert, CHICAGO))
+                                AlertDetailScreen(
+                                    sa, a.header, a.description,
+                                    AlertMatch.effectiveFrom(a.alert, CHICAGO),
+                                    a.routeIdxs.distinct().toIntArray(),
+                                )
                             })
                         },
                     )
@@ -113,6 +118,7 @@ class AlertDetailScreen(
     private val header: String,
     private val description: String,
     private val effective: String,
+    private val routeIdxs: IntArray = IntArray(0),
 ) : LightScreen<Unit, AlertDetailViewModel>(sealedActivity) {
 
     override val viewModelClass: Class<AlertDetailViewModel> get() = AlertDetailViewModel::class.java
@@ -124,6 +130,12 @@ class AlertDetailScreen(
             LazyColumn {
                 item { MctRow(primary = header, secondary = effective) }
                 item { MctRow(primary = description.ifEmpty { "No further detail published." }) }
+                items(routeIdxs.toList()) { r ->
+                    MctRow(
+                        primary = "View route ${RouteLabels.displayShortName(AppGraph.index, r)} →",
+                        onTap = { navigateTo({ sa -> RouteScreen(sa, r) }) },
+                    )
+                }
             }
         }
     }
