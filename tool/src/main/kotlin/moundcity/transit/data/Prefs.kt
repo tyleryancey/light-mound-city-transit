@@ -18,8 +18,6 @@ class Prefs(private val store: DataStore<Preferences>) {
     private val savedStopsKey = stringPreferencesKey("saved_stops")
     private val lastAttemptKey = longPreferencesKey("last_refresh_attempt")
     private val lastSuccessKey = longPreferencesKey("last_refresh_success")
-    private val activeIndexKey = stringPreferencesKey("active_index_name")
-    private val expiryWarnedKey = booleanPreferencesKey("expiry_warning_seen")
     private val lastModifiedKey = stringPreferencesKey("last_modified_header")
     private val refreshNoticeKey = stringPreferencesKey("refresh_notice")
     private val revokedKey = booleanPreferencesKey("source_revoked")
@@ -56,17 +54,14 @@ class Prefs(private val store: DataStore<Preferences>) {
     suspend fun lastRefreshSuccess(): Long? = store.data.first()[lastSuccessKey]
     suspend fun setLastRefreshSuccess(epochSeconds: Long) = store.edit { it[lastSuccessKey] = epochSeconds }
 
-    suspend fun activeIndexName(): String? = store.data.first()[activeIndexKey]?.ifEmpty { null }
-    suspend fun setActiveIndexName(name: String?) = store.edit { it[activeIndexKey] = name.orEmpty() }
-
-    suspend fun expiryWarningSeen(): Boolean = store.data.first()[expiryWarnedKey] ?: false
-    suspend fun markExpiryWarningSeen() = store.edit { it[expiryWarnedKey] = true }
-
-    suspend fun lastModifiedHeader(): String? = store.data.first()[lastModifiedKey]?.ifEmpty { null }
+    suspend fun lastModifiedHeader(): String? = optString(lastModifiedKey)
     suspend fun setLastModifiedHeader(value: String?) = store.edit { it[lastModifiedKey] = value.orEmpty() }
 
-    suspend fun refreshNotice(): String? = store.data.first()[refreshNoticeKey]?.ifEmpty { null }
+    suspend fun refreshNotice(): String? = optString(refreshNoticeKey)
     suspend fun setRefreshNotice(value: String?) = store.edit { it[refreshNoticeKey] = value.orEmpty() }
+
+    /** Empty-string-as-absent, the file's one nullable-string convention. */
+    private suspend fun optString(key: Preferences.Key<String>) = store.data.first()[key]?.ifEmpty { null }
 
     suspend fun sourceRevoked(): Boolean = store.data.first()[revokedKey] ?: false
     suspend fun setSourceRevoked(value: Boolean) = store.edit { it[revokedKey] = value }

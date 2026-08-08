@@ -1,7 +1,5 @@
 package moundcity.transit.data
 
-import java.util.concurrent.TimeUnit
-import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
@@ -13,7 +11,6 @@ import okhttp3.Request
 object ScheduleFetcher {
 
     private const val URL = "https://www.metrostlouis.org/Transit/google_transit.zip"
-    private const val UA = "Mound City Transit/1.0.0 (Light Phone 3 tool; contact: tyleryancey5@gmail.com)"
 
     sealed interface Result {
         class Fresh(val zipBytes: ByteArray, val lastModified: String?) : Result
@@ -22,15 +19,11 @@ object ScheduleFetcher {
         class Transient(val detail: String) : Result
     }
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        // The zip is ~3.7 MB on a phone-grade connection; bounded, not eternal.
-        .callTimeout(120, TimeUnit.SECONDS)
-        .build()
+    // The zip is ~3.7 MB on a phone-grade connection; bounded, not eternal.
+    private val client = MetroHttp.client(callTimeoutSeconds = 120)
 
     fun fetch(ifModifiedSince: String?): Result = try {
-        val request = Request.Builder().url(URL).header("User-Agent", UA)
+        val request = Request.Builder().url(URL).header("User-Agent", MetroHttp.USER_AGENT)
             .apply { if (ifModifiedSince != null) header("If-Modified-Since", ifModifiedSince) }
             .build()
         client.newCall(request).execute().use { resp ->

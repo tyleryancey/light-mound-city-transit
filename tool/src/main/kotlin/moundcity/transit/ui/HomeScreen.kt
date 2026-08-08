@@ -8,11 +8,9 @@ import androidx.compose.runtime.getValue
 import com.thelightphone.sdk.InitialScreen
 import com.thelightphone.sdk.LightScreen
 import com.thelightphone.sdk.LightViewModel
-import com.thelightphone.sdk.LightWork
 import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.SimpleLightScreen
 import java.time.Instant
-import kotlin.time.Duration.Companion.hours
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -45,10 +43,8 @@ class HomeViewModel : LightViewModel<Unit>() {
                 AppGraph.liveSnapshot(now.epochSecond)?.trips,
             )
             val snapshot = AppGraph.snapshot
-            alertCount.value = if (snapshot == null) 0 else AlertMatch.forSavedStops(
-                snapshot.alerts, AppGraph.index,
-                saved.mapNotNull { AppGraph.index.resolveStop(it) },
-            ).size
+            alertCount.value = if (snapshot == null) 0 else
+                AlertMatch.forSavedStops(snapshot.alerts, AppGraph.index, saved).size
         }
     }
 }
@@ -62,13 +58,13 @@ class HomeScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, HomeVi
 
     override fun willShow() {
         AppGraph.ensure(lightContext)
-        // UPDATE policy makes re-enqueueing idempotent (doc 03 §5); the
-        // 15-minute WorkManager floor is far below this interval.
-        LightWork.enqueuePeriodic(lightContext, "schedule-refresh", 24.hours)
+        AppGraph.ensureDailyJob(lightContext)
     }
 
     @Composable
     override fun Content() {
+        // Idempotent fast path — belt over willShow for any compose-first
+        // ordering the SDK lifecycle may take.
         AppGraph.ensure(lightContext)
         val saved by viewModel.savedRows.collectAsState()
         val alertCount by viewModel.alertCount.collectAsState()
@@ -80,7 +76,7 @@ class HomeScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, HomeVi
                     item {
                         MctRow(
                             primary = "The agency's schedule feed is no longer available",
-                            secondary = "Using the last good schedule — times will age out (D9)",
+                            secondary = "Using the last good schedule — times will age out",
                         )
                     }
                 }
@@ -97,9 +93,9 @@ class HomeScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, HomeVi
                     MctRow(
                         primary = "${row.code}  ${row.name}",
                         secondary = row.nextText,
-                        onTap = {
-                            val stop = AppGraph.index.resolveStop(row.code) ?: return@MctRow
-                            navigateTo({ sa -> DeparturesScreen(sa, stop) })
+                        // A vanished stop's row is visibly inert, not a fake target.
+                        onTap = row.stopIdx?.let { stop ->
+                            { navigateTo({ sa -> DeparturesScreen(sa, stop) }) }
                         },
                     )
                 }
@@ -107,11 +103,7 @@ class HomeScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, HomeVi
                 item { MctRow(primary = "Browse", onTap = { navigateTo(::BrowseScreen) }) }
                 item {
                     MctRow(
-                        primary = when {
-                            alertCount == 1 -> "Alerts (1 affects your stops)"
-                            alertCount > 1 -> "Alerts ($alertCount affect your stops)"
-                            else -> "Alerts"
-                        },
+                        primary = AlertMatch.badgeLabel(alertCount),
                         onTap = { navigateTo({ sa -> AlertsScreen(sa) }) },
                     )
                 }

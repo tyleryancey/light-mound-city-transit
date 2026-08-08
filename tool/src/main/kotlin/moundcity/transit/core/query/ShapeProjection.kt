@@ -12,6 +12,7 @@ class ShapeProjection private constructor(
     private val scale: Double,
     private val offsetX: Double,
     private val offsetY: Double,
+    private val heightSpan: Double,
     private val points: IntArray,
 ) {
 
@@ -38,7 +39,9 @@ class ShapeProjection private constructor(
             ).let { if (it == Double.MAX_VALUE) 1.0 else it }
             val offsetX = pad + (availW - spanX * scale) / 2
             val offsetY = pad + (availH - spanY * scale) / 2
-            return ShapeProjection(minLat.toDouble(), minLon.toDouble(), lonScale, scale, offsetX, offsetY, shape)
+            // spanY * scale is stored, not recomputed per point — the draw loop
+            // projects every point and a rescan there is O(points²) per frame.
+            return ShapeProjection(minLat.toDouble(), minLon.toDouble(), lonScale, scale, offsetX, offsetY, spanY * scale, shape)
         }
     }
 
@@ -52,18 +55,7 @@ class ShapeProjection private constructor(
         val px = offsetX + (lonMicro - originLonMicro) * lonScale * scale
         // screen y grows downward; north is up
         val southSpanned = (latMicro - originLatMicro) * scale
-        val py = offsetY + (heightSpan() - southSpanned)
+        val py = offsetY + (heightSpan - southSpanned)
         return px.toFloat() to py.toFloat()
-    }
-
-    private fun heightSpan(): Double {
-        var minLat = Int.MAX_VALUE; var maxLat = Int.MIN_VALUE
-        var i = 0
-        while (i < points.size) {
-            val la = points[i]
-            if (la < minLat) minLat = la; if (la > maxLat) maxLat = la
-            i += 2
-        }
-        return (maxLat - minLat) * scale
     }
 }

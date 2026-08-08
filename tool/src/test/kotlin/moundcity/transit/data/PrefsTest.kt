@@ -53,17 +53,13 @@ class PrefsTest {
     }
 
     @Test
-    fun refreshTimestampsAndIndexNameRoundTrip() = withPrefs { prefs ->
+    fun refreshTimestampsRoundTrip() = withPrefs { prefs ->
         assertNull(prefs.lastRefreshAttempt(), "no attempt yet")
         assertNull(prefs.lastRefreshSuccess(), "no success yet")
         prefs.setLastRefreshAttempt(1_785_949_785L)
         prefs.setLastRefreshSuccess(1_785_949_800L)
         assertEquals(1_785_949_785L, prefs.lastRefreshAttempt(), "attempt epoch round-trips")
         assertEquals(1_785_949_800L, prefs.lastRefreshSuccess(), "success epoch round-trips")
-
-        assertNull(prefs.activeIndexName(), "asset is the implicit default")
-        prefs.setActiveIndexName("index-20260812.bin")
-        assertEquals("index-20260812.bin", prefs.activeIndexName(), "active index name round-trips")
     }
 
     @Test
@@ -79,13 +75,6 @@ class PrefsTest {
             store.data.first()[stringPreferencesKey("saved_stops")],
             "the next write persists a clean string — self-heal complete",
         )
-    }
-
-    @Test
-    fun expiryWarningFlagLatches() = withPrefs { prefs ->
-        assertFalse(prefs.expiryWarningSeen(), "unseen by default")
-        prefs.markExpiryWarningSeen()
-        assertTrue(prefs.expiryWarningSeen(), "latched")
     }
 
     @Test

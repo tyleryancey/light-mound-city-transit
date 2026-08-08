@@ -15,4 +15,8 @@ object RefreshPolicy {
 
     /** Doc 03 §5: two retries with rising backoff, then fail visibly. */
     val retryDelaysMs: LongArray = longArrayOf(2_000, 8_000)
+
+    /** M1: the feed republishes every 21-42 s; a manual re-tap sooner than
+     *  this buys nothing and costs the agency a request. */
+    const val MANUAL_REFRESH_FLOOR_SECONDS = 30L
 }

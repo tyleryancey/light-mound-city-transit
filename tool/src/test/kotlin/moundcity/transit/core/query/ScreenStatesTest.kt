@@ -5,6 +5,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -86,6 +87,13 @@ class ScreenStatesTest {
         assertEquals("canceled", RowFormat.statusText(RowStatus.Canceled, nowEpoch = 0, headerTs = 0), "shown struck, never removed")
     }
 
+    @Test
+    fun wheelchairLineComesFromTheFeedFlag() {
+        assertEquals("wheelchair accessible", RowFormat.wheelchairText(1), "flag 1 = accessible (doc 02 §3.6: shown as a line on departures)")
+        assertEquals("not wheelchair accessible", RowFormat.wheelchairText(2), "flag 2 = not accessible — 2,978 of 5,118 stops")
+        assertNull(RowFormat.wheelchairText(0), "flag 0 = unknown; say nothing rather than guess")
+    }
+
     // --- home (3.1): next departure per saved stop ---
 
     @Test
@@ -111,6 +119,56 @@ class ScreenStatesTest {
         assertEquals(2, rows.size, "a vanished saved stop is never silently dropped (4.4)")
         assertEquals("stop 99999", rows[1].name, "no name to show — the code is the identity")
         assertEquals("not in this schedule", rows[1].nextText, "the row says why there is no next time")
+        assertNull(rows[1].stopIdx, "no index = the screen renders the row inert, no fake tap target")
+        assertEquals(index.resolveStop(10624), rows[0].stopIdx, "a live row carries its stop for the tap")
+    }
+
+    @Test
+    fun expiredScheduleReachesTheHomeRowsToo() {
+        // Past expiry, active services are empty and every row would read
+        // "no more today" — a lie D9 exists to prevent.
+        val rows = HomeState.savedStopRows(
+            index, listOf(10624), Instant.parse("2026-09-02T16:00:00Z"), chicago,
+        )
+        assertEquals("schedule expired", rows[0].nextText, "an expired schedule says so on every surface (D9)")
+    }
+
+    @Test
+    fun alertPhrasesHaveOneOwner() {
+        assertEquals("Alerts", AlertMatch.badgeLabel(0), "no count when nothing affects your stops")
+        assertEquals("Alerts (1 affects your stops)", AlertMatch.badgeLabel(1), "singular verb")
+        assertEquals("Alerts (3 affect your stops)", AlertMatch.badgeLabel(3), "plural verb")
+        assertNull(AlertMatch.bannerLabel(0), "no banner when nothing matches")
+        assertEquals("1 alert affects this stop →", AlertMatch.bannerLabel(1), "doc 02 §3.2 banner, singular")
+        assertEquals("3 alerts affect this stop →", AlertMatch.bannerLabel(3), "plural")
+    }
+
+    @Test
+    fun alertFilterAndLabelAreOneDecision() {
+        val stopRoutes = setOf(1, 2)
+        val saved = setOf(3)
+        // (stop-scoped, saved-scoped, toggled-to-all, nothing-saved) × label — the
+        // four states finding 1 taught us to keep honest, decided in one place.
+        AlertMatch.filterState(stopRoutes, showAll = false, savedRoutes = null).let {
+            assertEquals(stopRoutes, it.filter, "banner navigation filters to the stop's routes")
+            assertEquals("Showing this stop — tap for all", it.label, "and says so")
+        }
+        AlertMatch.filterState(stopRoutes, showAll = true, savedRoutes = null).let {
+            assertEquals(null, it.filter, "toggled: everything")
+            assertEquals("Showing all alerts — tap for this stop", it.label, "with the way back")
+        }
+        AlertMatch.filterState(null, showAll = false, savedRoutes = saved).let {
+            assertEquals(saved, it.filter, "default: saved-stop routes")
+            assertEquals("Showing your stops — tap for all", it.label, "doc 02 §3.5")
+        }
+        AlertMatch.filterState(null, showAll = true, savedRoutes = saved).let {
+            assertEquals(null, it.filter, "toggled from saved: everything")
+            assertEquals("Showing all alerts — tap for your stops", it.label, "and the way back")
+        }
+        AlertMatch.filterState(null, showAll = false, savedRoutes = emptySet()).let {
+            assertEquals(null, it.filter, "nothing saved shows all")
+            assertEquals("No saved stops — showing all", it.label, "but says so — never 'your stops' (finding 1)")
+        }
     }
 
     // --- alerts (3.6) ---
@@ -138,7 +196,7 @@ class ScreenStatesTest {
         val stop = index.resolveStop(10624)!!
         assertEquals(
             AlertMatch.forRoutes(alerts, index, StopRoutes.routesServing(index, stop)).size,
-            AlertMatch.forSavedStops(alerts, index, listOf(stop)).size,
+            AlertMatch.forSavedStops(alerts, index, listOf(10624)).size,
             "with saved stops the badge is the route-union filter, unchanged",
         )
     }

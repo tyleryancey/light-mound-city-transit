@@ -1,7 +1,7 @@
 package moundcity.transit.core.gtfs
 
 import java.io.StringReader
-import java.util.zip.ZipFile
+import moundcity.transit.core.query.QueryTestData
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -15,12 +15,7 @@ import kotlin.test.assertTrue
  */
 class ScheduleIndexTest {
 
-    private val index: ScheduleIndex by lazy {
-        val feed = ZipFile(FixturePaths.gtfsZip).use { zip ->
-            GtfsFeed.load { name -> zip.getInputStream(zip.getEntry(name)).bufferedReader() }
-        }
-        ScheduleIndex(IndexWriter.build(feed).container())
-    }
+    private val index: ScheduleIndex get() = QueryTestData.index
 
     // serviceIds sorted: 319-T1=0, 319-T2=1, 325-B1=2, ...
     private val weekday = setOf(0, 2)

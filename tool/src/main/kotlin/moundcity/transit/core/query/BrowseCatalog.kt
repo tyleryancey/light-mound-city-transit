@@ -40,9 +40,10 @@ object BrowseCatalog {
                 else -> mo.add(BusRoute(RouteLabels.displayShortName(index, r), r))
             }
         }
+        val byNumber = compareBy<BusRoute> { it.label.filter { c -> c.isDigit() }.toIntOrNull() ?: Int.MAX_VALUE }
         return RouteGroups(
-            missouri = mo.sortedBy { it.label.filter { c -> c.isDigit() }.toIntOrNull() ?: Int.MAX_VALUE },
-            illinois = il.sortedBy { it.label.filter { c -> c.isDigit() }.toIntOrNull() ?: Int.MAX_VALUE },
+            missouri = mo.sortedWith(byNumber),
+            illinois = il.sortedWith(byNumber),
             rail = railByLabel.entries.map { (label, idxs) -> RailLine(label, idxs) }.sortedBy { it.label },
         )
     }
@@ -52,7 +53,7 @@ object BrowseCatalog {
      * come from one pass over the departures section; tripStops() is itself a
      * full scan, so calling it per candidate trip would be quadratic. */
     fun routeStops(index: ScheduleIndex, routeIdx: Int, direction: Int): List<Int> {
-        val all = (0 until index.serviceCount).toSet()
+        val all = index.allServiceIdxs()
         val counts = IntArray(index.tripCount)
         for (stop in 0 until index.stopCount) {
             for (row in index.departures(stop, 0, all, limit = Int.MAX_VALUE)) {
@@ -71,7 +72,7 @@ object BrowseCatalog {
     }
 
     private fun stopsServedBy(index: ScheduleIndex, pred: (Int) -> Boolean): List<Int> {
-        val all = (0 until index.serviceCount).toSet()
+        val all = index.allServiceIdxs()
         return (0 until index.stopCount).filter { stop ->
             index.departures(stop, 0, all, limit = Int.MAX_VALUE)
                 .any { pred(index.tripRoute(it.tripIdx)) }

@@ -1,6 +1,6 @@
 package moundcity.transit.core.rt
 
-import moundcity.transit.core.gtfs.FixturePaths
+import moundcity.transit.core.query.QueryTestData
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -12,9 +12,7 @@ import kotlin.test.assertTrue
  */
 class RtVehiclesTest {
 
-    private val vehicles: RtVehicles by lazy {
-        RtDecoder.decodeVehicles(FixturePaths.fixturesDir.resolve("StlRealTimeVehicles.pb").readBytes())
-    }
+    private val vehicles: RtVehicles get() = QueryTestData.rtVehicles
 
     @Test
     fun oneHundredTwentySevenFixes() {
@@ -46,5 +44,14 @@ class RtVehiclesTest {
         val fix = vehicles.fixes.single { it.tripId == "3407211" }
         assertEquals(38_734_340, fix.latMicro, "the Approach golden's latitude, via float→double→trunc")
         assertEquals(-90_354_400, fix.lonMicro, "and longitude")
+    }
+
+    @Test
+    fun theTripJoinConventionHasOneOwner() {
+        // RT tripId is the decimal string of the static trip_id (the measured
+        // 100% join) — fixByTripId owns that fact so no screen re-encodes it.
+        val byTrip = vehicles.fixByTripId()
+        assertEquals(127, byTrip.size, "every fix keys on its trip")
+        assertEquals(38_734_340, byTrip[3407211]?.latMicro, "the golden fix resolves by Int trip id")
     }
 }

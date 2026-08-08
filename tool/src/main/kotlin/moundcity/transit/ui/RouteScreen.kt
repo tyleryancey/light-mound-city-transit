@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.thelightphone.sdk.LightScreen
-import com.thelightphone.sdk.LightViewModel
 import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.SimpleLightScreen
 import com.thelightphone.sdk.ui.LightThemeTokens
@@ -24,10 +23,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import moundcity.transit.core.query.DataAge
 import moundcity.transit.core.query.RouteLabels
+import moundcity.transit.core.query.RowFormat
+import moundcity.transit.core.query.ShapeProjection
 import moundcity.transit.core.query.BrowseCatalog
 import moundcity.transit.core.rt.RtVehicle
 
-class RouteViewModel(private val routeIdx: Int) : LightViewModel<Unit>() {
+class RouteViewModel(private val routeIdx: Int) : ReloadingViewModel() {
 
     data class ViewerState(
         val shape: IntArray?,
@@ -41,6 +42,11 @@ class RouteViewModel(private val routeIdx: Int) : LightViewModel<Unit>() {
     val state = MutableStateFlow<ViewerState?>(null)
     val expired = MutableStateFlow(false)
 
+    /** Shape and stop list are pure functions of the static index — computing
+     *  them is a full departures-section pass, so a direction toggle or a
+     *  vehicle refresh must not pay it again. Keyed by direction. */
+    private val geometry = HashMap<Int, Pair<IntArray?, List<Int>>>()
+
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
         reload()
@@ -51,11 +57,11 @@ class RouteViewModel(private val routeIdx: Int) : LightViewModel<Unit>() {
         reload()
     }
 
-    fun reload() {
+    override fun reload() {
         viewModelScope.launch(Dispatchers.IO) {
             val index = AppGraph.index
             val now = Instant.now()
-            expired.value = DataAge.state(index, now.atZone(CHICAGO).toLocalDate()) == DataAge.State.EXPIRED
+            expired.value = DataAge.isExpired(index, now, CHICAGO)
             if (expired.value) { state.value = null; return@launch }
             val dir = direction.value
             val isRail = RouteLabels.isRail(index, routeIdx)
@@ -66,20 +72,16 @@ class RouteViewModel(private val routeIdx: Int) : LightViewModel<Unit>() {
                     t != null && index.tripRoute(t) == routeIdx && index.tripDirection(t) == dir
                 }
             }
+            val (shape, stops) = geometry.getOrPut(dir) {
+                index.routeShape(routeIdx, dir) to BrowseCatalog.routeStops(index, routeIdx, dir)
+            }
             state.value = ViewerState(
-                shape = index.routeShape(routeIdx, dir),
-                stopIdxs = BrowseCatalog.routeStops(index, routeIdx, dir),
+                shape = shape,
+                stopIdxs = stops,
                 vehicles = fixes,
                 isRail = isRail,
                 liveLine = live?.let { DataAge.liveLine(now.epochSecond, it.vehicles.headerTimestamp) },
             )
-        }
-    }
-
-    fun refresh() {
-        viewModelScope.launch(Dispatchers.IO) {
-            AppGraph.refresh(Instant.now().epochSecond)
-            reload()
         }
     }
 }
@@ -108,7 +110,7 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
             LazyColumn {
                 if (expired) {
                     // D9: expiry REPLACES the viewer, same as the departures list
-                    item { MctRow(primary = "This schedule has expired.", secondary = "Refresh the app's data or reinstall to get current times.") }
+                    item { ExpiredNotice() }
                     return@LazyColumn
                 }
                 item {
@@ -116,7 +118,7 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
                         primary = "direction ${dir + 1} of 2 — tap to switch",
                         secondary = state?.let { s ->
                             if (s.isRail) "scheduled — no live train positions"
-                            else s.liveLine?.let { "${s.vehicles.size} vehicle${if (s.vehicles.size == 1) "" else "s"} · $it" } ?: "no live data — refresh below"
+                            else s.liveLine?.let { "${RowFormat.counted(s.vehicles.size, "vehicle")} · $it" } ?: "no live data — refresh below"
                         },
                         onTap = { viewModel.toggleDirection() },
                     )
@@ -126,9 +128,7 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
                     if (s?.shape != null) {
                         val stroke = LightThemeTokens.colors.content
                         Canvas(modifier = Modifier.fillMaxWidth().height(280.dp)) {
-                            val proj = moundcity.transit.core.query.ShapeProjection.fit(
-                                s.shape, size.width, size.height, pad = 24f,
-                            )
+                            val proj = ShapeProjection.fit(s.shape, size.width, size.height, pad = 24f)
                             var i = 0
                             while (i < proj.pointCount - 1) {
                                 drawLine(
@@ -156,7 +156,7 @@ class RouteScreen(sealedActivity: SealedLightActivity, private val routeIdx: Int
                 item { MctRow(primary = "— stops —") }
                 items(state?.stopIdxs ?: emptyList()) { stop ->
                     MctRow(
-                        primary = "${index.stopCode(stop)}  ${index.stopName(stop)}",
+                        primary = stopLabel(index, stop),
                         onTap = { navigateTo({ sa -> DeparturesScreen(sa, stop) }) },
                     )
                 }

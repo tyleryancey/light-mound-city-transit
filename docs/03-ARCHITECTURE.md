@@ -195,8 +195,12 @@ graphs), Room becomes the right answer. Record that as the trigger.
   picks the newest valid file, falling back to the asset. A half-written index can
   never be observed.
 - **DataStore** — saved stop numbers (≤12), last refresh attempt, last successful
-  refresh, active index filename, and the "I have seen the expiry warning" flag.
-  That is the entire mutable state.
+  refresh, the server's Last-Modified stamp (the next If-Modified-Since), the
+  refresh notice, and the source-revoked flag. That is the entire mutable state.
+  *(Revised at the post-5 cleanup: the active-index-filename key duplicated what
+  the directory already proves — the reader picks the newest valid file — and the
+  expiry-warning latch was scaffolding for a warning that D9's expiry replacement
+  made redundant; both deleted.)*
 
 ### Reading it
 

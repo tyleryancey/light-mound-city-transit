@@ -1,6 +1,6 @@
 package moundcity.transit.core.rt
 
-import moundcity.transit.core.gtfs.FixturePaths
+import moundcity.transit.core.query.QueryTestData
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -8,9 +8,7 @@ import kotlin.test.assertTrue
 /** Build plan 1.15: 24 alerts, 27 informed entities, `effect` unset on all 24. */
 class RtAlertsTest {
 
-    private val alerts: RtAlerts by lazy {
-        RtDecoder.decodeAlerts(FixturePaths.fixturesDir.resolve("StlRealTimeAlerts.pb").readBytes())
-    }
+    private val alerts: RtAlerts get() = QueryTestData.rtAlerts
 
     @Test
     fun twentyFourAlertsTwentySevenInformedEntities() {

@@ -50,7 +50,7 @@ object DepartureBoard {
         val today = now.atZone(zone).toLocalDate()
         val delays = rt?.delayByTrip() ?: emptyMap()
         val canceled = rt?.canceledTrips() ?: emptySet()
-        val fixByTrip = vehicles?.fixes?.associateBy { it.tripId } ?: emptyMap()
+        val fixByTrip = vehicles?.fixByTripId() ?: emptyMap()
 
         val rows = mutableListOf<BoardRow>()
         for (date in listOf(today.minusDays(1), today)) {
@@ -78,7 +78,7 @@ object DepartureBoard {
                         routeIdx = index.tripRoute(d.tripIdx),
                         headsignIdx = index.tripHeadsign(d.tripIdx),
                         status = status,
-                        vehicle = fixByTrip[tripId.toString()],
+                        vehicle = fixByTrip[tripId],
                     )
                 )
             }

@@ -42,31 +42,17 @@ class AlertsViewModel(private val routeFilter: IntArray?) : LightViewModel<Unit>
     fun reload() {
         val gen = ++generation
         viewModelScope.launch(Dispatchers.IO) {
-            // Label and filter come from one showAll read, before the blocking
-            // fetch — the label must render while the fetch is still in flight.
+            // Filter and label are one core decision (AlertMatch.filterState),
+            // taken from one showAll read before the blocking fetch — the label
+            // must render while the fetch is still in flight.
             val index = AppGraph.index
-            val all = showAll.value
             val savedRoutes = if (routeFilter != null) null else {
-                AppGraph.prefs?.savedStops().orEmpty()
-                    .mapNotNull { index.resolveStop(it) }
-                    .flatMap { StopRoutes.routesServing(index, it) }
-                    .toSet()
+                StopRoutes.routesServingSaved(index, AppGraph.prefs?.savedStops().orEmpty())
             }
-            // No saved stops shows all — but says so, never "your stops" (finding 1).
-            val filter = when {
-                all -> null
-                routeFilter != null -> routeFilter.toSet()
-                savedRoutes.isNullOrEmpty() -> null
-                else -> savedRoutes
-            }
+            val state = AlertMatch.filterState(routeFilter?.toSet(), showAll.value, savedRoutes)
             if (gen != generation) return@launch
-            filterLabel.value = when {
-                routeFilter != null && all -> "Showing all alerts — tap for this stop"
-                routeFilter != null -> "Showing this stop — tap for all"
-                all -> "Showing all alerts — tap for your stops"
-                savedRoutes.isNullOrEmpty() -> "No saved stops — showing all"
-                else -> "Showing your stops — tap for all"
-            }
+            filterLabel.value = state.label
+            // D10's one implicit fetch: once per open, only when nothing is cached.
             if (AppGraph.snapshot == null) AppGraph.refresh(Instant.now().epochSecond)
             val snapshot = AppGraph.snapshot
             if (gen != generation) return@launch
@@ -76,7 +62,7 @@ class AlertsViewModel(private val routeFilter: IntArray?) : LightViewModel<Unit>
                 return@launch
             }
             status.value = null
-            alerts.value = AlertMatch.forRoutes(snapshot.alerts, index, filter)
+            alerts.value = AlertMatch.forRoutes(snapshot.alerts, index, state.filter)
         }
     }
 }
