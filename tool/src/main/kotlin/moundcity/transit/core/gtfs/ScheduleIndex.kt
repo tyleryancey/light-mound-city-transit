@@ -140,6 +140,9 @@ class ScheduleIndex(container: ByteArray) {
 
     val serviceCount: Int get() = serviceIds.size
 
+    /** Every service index — the "any service" query set callers keep building. */
+    fun allServiceIdxs(): Set<Int> = (0 until serviceCount).toSet()
+
     fun routeId(routeIdx: Int): String = routeIds[routeIdx]
 
     fun routeIndexOf(routeId: String): Int? {
@@ -180,15 +183,14 @@ class ScheduleIndex(container: ByteArray) {
         }.min()
 
     /** The 1.10 expiry rule, derived from the index's own sections. */
-    fun expiryDate(): java.time.LocalDate {
-        val ends = (0 until serviceCount).mapNotNull { i ->
+    fun expiryDate(): java.time.LocalDate = FeedExpiry.expiryDate(
+        calendarEndDates = (0 until serviceCount).mapNotNull { i ->
             calendarBuf.getInt(i * 9 + 4).takeIf { it != 0 }?.let { intDate(it) }
-        }
-        val exceptions = (0 until sections.getValue("calendar_dates").size / 6).map { j ->
+        },
+        calendarDateDates = (0 until sections.getValue("calendar_dates").size / 6).map { j ->
             intDate(calendarDatesBuf.getInt(j * 6 + 2))
-        }
-        return (ends + exceptions).max()
-    }
+        },
+    )
 
     private fun intDate(v: Int): java.time.LocalDate =
         java.time.LocalDate.of(v / 10000, (v / 100) % 100, v % 100)

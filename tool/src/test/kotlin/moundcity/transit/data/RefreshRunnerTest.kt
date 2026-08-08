@@ -106,7 +106,6 @@ class RefreshRunnerTest {
         val written = File(dir, updated.indexName)
         assertTrue(written.isFile, "the index landed on disk atomically")
         assertEquals(5118, run { var n = 0; ScheduleIndex(written.readBytes()).let { n = it.stopCount }; n }, "and it parses to the full stop set")
-        assertEquals(updated.indexName, prefs.activeIndexName(), "recorded as active")
         assertEquals("Wed, 05 Aug 2026 12:00:00 GMT", prefs.lastModifiedHeader(), "the server's stamp feeds the next If-Modified-Since")
         assertEquals(1_786_300_000, prefs.lastRefreshSuccess(), "success stamped")
         assertNull(prefs.refreshNotice(), "no notice when every saved stop survived")
@@ -133,7 +132,6 @@ class RefreshRunnerTest {
         withHarness(
             listOf(ScheduleFetcher.Result.Fresh(tamperedZip, "Wed, 05 Aug 2026 12:00:00 GMT")),
         ) { runner, dir, prefs, _ ->
-            prefs.setActiveIndexName("index-20260805.bin")
             val out = runner.run(dir, asset, prefs, nowEpoch = 100)
             val refused = assertIs<RefreshRunner.RunOutcome.Refused>(out, "an assumption break refuses the swap (4.3)")
             assertEquals("A1: stop_code != stop_id on 1 of 1 stops", refused.reason, "quoting the observed value")
@@ -142,7 +140,6 @@ class RefreshRunnerTest {
                 prefs.refreshNotice(),
                 "surfaced, not swallowed",
             )
-            assertEquals("index-20260805.bin", prefs.activeIndexName(), "the old index stays active")
             assertNull(prefs.lastModifiedHeader(), "a refused zip must be refetched next time, not 304'd away")
             assertTrue(dir.listFiles().orEmpty().none { it.name.startsWith("index-") }, "nothing new written")
         }

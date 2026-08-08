@@ -27,6 +27,10 @@ import moundcity.transit.core.query.DataAge
 
 val CHICAGO: ZoneId = ZoneId.of("America/Chicago")
 
+/** The stop line every list renders: code, two spaces, name. */
+fun stopLabel(index: moundcity.transit.core.gtfs.ScheduleIndex, stop: Int): String =
+    "${index.stopCode(stop)}  ${index.stopName(stop)}"
+
 /** Shared page scaffold: title, optional back, content, the always-on data-age footer. */
 @Composable
 fun MctPage(
@@ -58,10 +62,22 @@ fun MctPage(
     }
 }
 
+/** D9: expiry REPLACES a screen's content — one wording, every screen. */
+@Composable
+fun ExpiredNotice() {
+    MctRow(
+        primary = "This schedule has expired.",
+        secondary = "Refresh the app's data or reinstall to get current times.",
+    )
+}
+
 /** Doc 02 §3.1: a data-age line at the bottom of every screen, never hidden. */
 @Composable
 fun DataAgeFooter() {
     val dataGen by AppGraph.dataGeneration.collectAsState()
+    // Deliberately event-driven, not a ticker: the line advances on refresh
+    // outcomes and index swaps, and otherwise holds still — no timer wakes
+    // the panel just to age a caption.
     val now = remember(dataGen) { Instant.now() }
     val schedule = DataAge.scheduleLine(AppGraph.index, now.atZone(CHICAGO).toLocalDate())
     val live = AppGraph.liveSnapshot(now.epochSecond)

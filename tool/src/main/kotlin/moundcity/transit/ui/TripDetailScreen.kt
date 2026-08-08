@@ -29,16 +29,18 @@ class TripDetailViewModel(private val tripIdx: Int, private val fromSeq: Int) : 
         viewModelScope.launch(Dispatchers.IO) {
             val index = AppGraph.index
             val now = Instant.now()
-            val remaining = index.tripStops(tripIdx, fromSeq)
+            // tripStops is a full departures-section scan — one call, then slice.
+            val allStops = index.tripStops(tripIdx, fromSeq = 0)
+            val remaining = allStops.filter { it.seq >= fromSeq }
             val lines = mutableListOf(
                 "${RouteLabels.displayShortName(index, index.tripRoute(tripIdx))}  ${index.routeLongName(index.tripRoute(tripIdx))}",
                 index.headsign(index.tripHeadsign(tripIdx)),
             )
             val live = AppGraph.liveSnapshot(now.epochSecond)
-            val fix = live?.vehicles?.fixes?.firstOrNull { it.tripId == index.tripId(tripIdx).toString() }
+            val fix = live?.vehicles?.fixByTripId()?.get(index.tripId(tripIdx))
             if (fix != null && remaining.isNotEmpty()) {
                 val estimate = Approach.estimate(
-                    index.tripStops(tripIdx, fromSeq = 0), remaining.first().seq,
+                    allStops, remaining.first().seq,
                     fix.latMicro, fix.lonMicro, index::stopLatMicro, index::stopLonMicro,
                 )
                 if (estimate != null) lines.add(estimate.text())

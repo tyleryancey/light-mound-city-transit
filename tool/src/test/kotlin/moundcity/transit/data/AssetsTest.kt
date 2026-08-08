@@ -1,7 +1,6 @@
 package moundcity.transit.data
 
 import java.io.File
-import java.security.MessageDigest
 import moundcity.transit.core.gtfs.FixturePaths
 import moundcity.transit.core.gtfs.ScheduleIndex
 import kotlin.test.Test
@@ -33,8 +32,7 @@ class AssetsTest {
 
     private val assetsDir: File get() = AssetPaths.assetsDir
 
-    private fun sha256(f: File): String =
-        MessageDigest.getInstance("SHA-256").digest(f.readBytes()).joinToString("") { "%02x".format(it) }
+    private fun sha256(f: File): String = moundcity.transit.core.gtfs.sha256(f.readBytes())
 
     @Test
     fun assetIndexIsTheManifestAnchoredBuild() {

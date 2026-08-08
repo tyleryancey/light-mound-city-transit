@@ -21,13 +21,21 @@ class BrowseViewModel : LightViewModel<Unit>() {
     val centers = MutableStateFlow<List<BrowseCatalog.Center>>(emptyList())
     val groups = MutableStateFlow<BrowseCatalog.RouteGroups?>(null)
 
+    private var loadedGeneration = -1
+
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
+        // The catalogs are pure functions of the static index; the full-index
+        // scans rerun only when the daily job swaps it (indexGeneration — a
+        // realtime refresh bump must not thrash them), not on every back-nav.
+        val gen = AppGraph.indexGeneration
+        if (gen == loadedGeneration && groups.value != null) return
         viewModelScope.launch(Dispatchers.IO) {
             val index = AppGraph.index
             stations.value = BrowseCatalog.railStations(index)
             centers.value = BrowseCatalog.transitCenters(index)
             groups.value = BrowseCatalog.routesGrouped(index)
+            loadedGeneration = gen
         }
     }
 }
@@ -105,7 +113,7 @@ class CenterScreen(
             LazyColumn {
                 items(stopIdxs.toList()) { stop ->
                     MctRow(
-                        primary = "${index.stopCode(stop)}  ${index.stopName(stop)}",
+                        primary = stopLabel(index, stop),
                         onTap = { navigateTo({ sa -> DeparturesScreen(sa, stop) }) },
                     )
                 }

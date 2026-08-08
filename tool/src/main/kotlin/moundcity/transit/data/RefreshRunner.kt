@@ -81,7 +81,6 @@ class RefreshRunner(
                 is ScheduleRefresh.Outcome.Rebuilt -> {
                     val name = "index-${dateStamp(nowEpoch)}.bin"
                     store.writeAtomically(name, outcome.indexBytes)
-                    prefs.setActiveIndexName(name)
                     fresh.lastModified?.let { prefs.setLastModifiedHeader(it) }
                     prefs.setLastRefreshSuccess(nowEpoch)
                     prefs.setSourceRevoked(false)

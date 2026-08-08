@@ -1,10 +1,6 @@
 package moundcity.transit.core.rt
 
-import java.util.zip.ZipFile
-import moundcity.transit.core.gtfs.FixturePaths
-import moundcity.transit.core.gtfs.GtfsFeed
-import moundcity.transit.core.gtfs.IndexWriter
-import moundcity.transit.core.gtfs.ScheduleIndex
+import moundcity.transit.core.query.QueryTestData
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -17,9 +13,7 @@ import kotlin.test.assertTrue
  */
 class RtTripsTest {
 
-    private val trips: RtTrips by lazy {
-        RtDecoder.decodeTrips(FixturePaths.fixturesDir.resolve("StlRealTimeTrips.pb").readBytes())
-    }
+    private val trips: RtTrips get() = QueryTestData.rtTrips
 
     @Test
     fun entityCountsMatchTheOracle() {
@@ -49,10 +43,7 @@ class RtTripsTest {
         val dup = trips.entities.filter { !it.canceled && it.isFullyAdjacentDuplicated() }
         assertEquals(20, dup.size, "20 of 127 live trips carry every STU twice (doc 01 §5c)")
 
-        val feed = ZipFile(FixturePaths.gtfsZip).use { zip ->
-            GtfsFeed.load { name -> zip.getInputStream(zip.getEntry(name)).bufferedReader() }
-        }
-        val index = ScheduleIndex(IndexWriter.build(feed).container())
+        val index = QueryTestData.index
         for (e in dup) {
             val deduped = e.dedupedStus()
             assertEquals(e.stus.size / 2, deduped.size, "dedup halves trip ${e.tripId}")

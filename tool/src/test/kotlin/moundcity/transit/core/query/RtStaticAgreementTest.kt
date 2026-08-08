@@ -3,6 +3,7 @@ package moundcity.transit.core.query
 import java.time.LocalDate
 import java.time.ZoneId
 import moundcity.transit.core.time.ServiceDay
+import moundcity.transit.core.rt.dedupedStus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

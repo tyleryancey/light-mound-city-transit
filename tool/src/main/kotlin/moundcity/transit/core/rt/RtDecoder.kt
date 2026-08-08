@@ -3,21 +3,7 @@ package moundcity.transit.core.rt
 /** One StopTimeUpdate, reduced to what the app can use (doc 03 §2: parse and discard). */
 data class RtStu(val stopId: String, val delay: Int?, val time: Long?)
 
-data class RtTripEntity(val tripId: String, val canceled: Boolean, val stus: List<RtStu>) {
-
-    /** True when every STU appears exactly twice, pairwise adjacent (doc 01 §5c). */
-    fun isFullyAdjacentDuplicated(): Boolean {
-        if (stus.size < 2 || stus.size % 2 != 0) return false
-        return (stus.indices step 2).all { stus[it] == stus[it + 1] }
-    }
-
-    /** Collapses adjacent duplicates; a no-op on clean trips. */
-    fun dedupedStus(): List<RtStu> {
-        val out = ArrayList<RtStu>(stus.size)
-        for (s in stus) if (out.isEmpty() || out.last() != s) out.add(s)
-        return out
-    }
-}
+data class RtTripEntity(val tripId: String, val canceled: Boolean, val stus: List<RtStu>)
 
 data class RtTrips(val headerTimestamp: Long, val entities: List<RtTripEntity>) {
 
@@ -46,13 +32,17 @@ data class RtVehicles(
      * "entity_without_vehicle". A name appearing here means the feed changed
      * shape (task 1.14) — the fixture test asserts this set is empty. */
     val forbiddenFieldsSeen: Set<String>,
-)
+) {
+    /** RT tripId is the decimal string of the static trip_id (the measured
+     *  100% join) — this owns that fact so no screen re-encodes it. */
+    fun fixByTripId(): Map<Int, RtVehicle> =
+        fixes.mapNotNull { f -> f.tripId.toIntOrNull()?.let { it to f } }.toMap()
+}
 
 data class RtAlert(
     val activePeriods: List<Pair<Long, Long?>>,
     val informedRouteIds: List<String>,
     val informedStopIds: List<String>,
-    val cause: Int?,
     val effectSeen: Boolean,
     val header: String,
     val description: String,
@@ -207,7 +197,6 @@ object RtDecoder {
                             val periods = mutableListOf<Pair<Long, Long?>>()
                             val routeIds = mutableListOf<String>()
                             val stopIds = mutableListOf<String>()
-                            var cause: Int? = null
                             var effectSeen = false
                             var header = ""
                             var description = ""
@@ -237,14 +226,13 @@ object RtDecoder {
                                             }
                                         }
                                     }
-                                    6 -> varintOrSkip(a, t2)?.let { cause = it.toInt() }
                                     7 -> { effectSeen = true; a.skip(t2 and 7) }
                                     10 -> lenOrSkip(a, t2)?.let { header = readTranslatedString(it) }
                                     11 -> lenOrSkip(a, t2)?.let { description = readTranslatedString(it) }
                                     else -> a.skip(t2 and 7)
                                 }
                             }
-                            alerts.add(RtAlert(periods, routeIds, stopIds, cause, effectSeen, header, description))
+                            alerts.add(RtAlert(periods, routeIds, stopIds, effectSeen, header, description))
                         }
                         else -> entity.skip(tag and 7)
                     }

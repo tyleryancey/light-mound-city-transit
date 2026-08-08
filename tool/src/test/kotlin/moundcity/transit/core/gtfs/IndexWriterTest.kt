@@ -1,7 +1,5 @@
 package moundcity.transit.core.gtfs
 
-import java.security.MessageDigest
-import java.util.zip.ZipFile
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -14,13 +12,6 @@ import kotlin.test.assertEquals
  */
 class IndexWriterTest {
 
-    private fun sha256(b: ByteArray): String =
-        MessageDigest.getInstance("SHA-256").digest(b).joinToString("") { "%02x".format(it) }
-
-    private fun loadFixtureFeed(): GtfsFeed = ZipFile(FixturePaths.gtfsZip).use { zip ->
-        GtfsFeed.load { name -> zip.getInputStream(zip.getEntry(name)).bufferedReader() }
-    }
-
     private fun manifestEntries(): Map<String, Pair<Int, String>> {
         val text = FixturePaths.indexManifest.readText()
         val re = Regex(""""([a-z_.]+)":\s*\{\s*"bytes":\s*(\d+),\s*"sha256":\s*"([0-9a-f]{64})"""")
@@ -32,7 +23,7 @@ class IndexWriterTest {
     @Test
     fun everySectionMatchesThePythonManifestByteForByte() {
         val manifest = manifestEntries().filterKeys { it != "index.bin" }
-        val built = IndexWriter.build(loadFixtureFeed())
+        val built = IndexWriter.build(fixtureFeed)
         assertEquals(manifest.keys, built.sections.keys, "same ten sections, same names")
         for ((name, expected) in manifest) {
             val bytes = built.sections.getValue(name)
@@ -44,14 +35,14 @@ class IndexWriterTest {
     @Test
     fun containerMatchesThePythonContainerByteForByte() {
         val expected = manifestEntries().getValue("index.bin")
-        val container = IndexWriter.build(loadFixtureFeed()).container()
+        val container = IndexWriter.build(fixtureFeed).container()
         assertEquals(expected.first, container.size, "index.bin container byte length")
         assertEquals(expected.second, sha256(container), "index.bin container sha256 — both writers, one format")
     }
 
     @Test
     fun containerHoldsAllSectionsRecoverably() {
-        val built = IndexWriter.build(loadFixtureFeed())
+        val built = IndexWriter.build(fixtureFeed)
         val container = built.container()
         val reopened = IndexContainer.parse(container)
         assertEquals(built.sections.keys.toList(), reopened.keys.toList(), "section order preserved")

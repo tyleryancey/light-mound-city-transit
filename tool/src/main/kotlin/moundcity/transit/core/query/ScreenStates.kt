@@ -45,6 +45,10 @@ object DataAge {
     /** Live data ages to scheduled at 15 minutes (build plan 3.8). */
     fun liveIsStale(nowEpoch: Long, headerTs: Long): Boolean =
         nowEpoch - headerTs >= LIVE_STALE_SECONDS
+
+    /** The one expiry question every screen asks (D9). */
+    fun isExpired(index: ScheduleIndex, now: Instant, zone: ZoneId): Boolean =
+        state(index, now.atZone(zone).toLocalDate()) == State.EXPIRED
 }
 
 /** Departure-row text (doc 02 §3.2, verbatim formats). */
@@ -72,12 +76,25 @@ object RowFormat {
             "${delayText(status.delaySeconds)} · live ${age}s ago"
         }
     }
+
+    /** "1 alert" / "3 alerts" — the singular/plural rule, once. */
+    fun counted(n: Int, noun: String): String = if (n == 1) "1 $noun" else "$n ${noun}s"
+
+    /** Doc 02 §3.6: the per-stop wheelchair flag, shown as a line on the
+     *  departures screen. 0 = unknown; say nothing rather than guess. */
+    fun wheelchairText(flag: Int): String? = when (flag) {
+        1 -> "wheelchair accessible"
+        2 -> "not wheelchair accessible"
+        else -> null
+    }
 }
 
 /** Home's saved-stop rows: number, name, next departure (doc 02 §3.1). */
 object HomeState {
 
-    data class SavedStopRow(val code: Int, val name: String, val nextText: String)
+    /** stopIdx is null when the schedule no longer resolves the code — the
+     *  screen renders that row inert instead of faking a tap target. */
+    data class SavedStopRow(val code: Int, val name: String, val nextText: String, val stopIdx: Int?)
 
     fun savedStopRows(
         index: ScheduleIndex,
@@ -85,27 +102,44 @@ object HomeState {
         now: Instant,
         zone: ZoneId,
         rt: RtTrips? = null,
-    ): List<SavedStopRow> = savedCodes.map { code ->
-        // A code the schedule no longer resolves keeps its row and says why —
-        // silently dropping a saved stop is the worst failure mode (doc 03 §5).
-        val stop = index.resolveStop(code)
-            ?: return@map SavedStopRow(code, "stop $code", "not in this schedule")
-        val next = DepartureBoard.at(index, now, zone, stop, limit = 1, rt = rt).firstOrNull()
-        SavedStopRow(
-            code = code,
-            name = index.stopName(stop),
-            // The builder owns the whole phrase — a screen prepending "next"
-            // would produce "next no more today" (review, Phase 4).
-            nextText = next?.let { "next ${RowFormat.timeText(it.minute)}" } ?: "no more today",
-        )
+    ): List<SavedStopRow> {
+        // Past expiry every board is empty and "no more today" would be a lie —
+        // the expired phrase reaches these rows too (D9).
+        val expired = DataAge.isExpired(index, now, zone)
+        return savedCodes.map { code ->
+            // A code the schedule no longer resolves keeps its row and says why —
+            // silently dropping a saved stop is the worst failure mode (doc 03 §5).
+            val stop = index.resolveStop(code)
+                ?: return@map SavedStopRow(code, "stop $code", "not in this schedule", stopIdx = null)
+            val next = if (expired) null else DepartureBoard.at(index, now, zone, stop, limit = 1, rt = rt).firstOrNull()
+            SavedStopRow(
+                code = code,
+                name = index.stopName(stop),
+                // The builder owns the whole phrase — a screen prepending "next"
+                // would produce "next no more today" (review, Phase 4).
+                nextText = when {
+                    expired -> "schedule expired"
+                    next != null -> "next ${RowFormat.timeText(next.minute)}"
+                    else -> "no more today"
+                },
+                stopIdx = stop,
+            )
+        }
     }
 }
 
 /** Routes serving a stop — the alert filter's key (doc 02 §3.5). */
 object StopRoutes {
     fun routesServing(index: ScheduleIndex, stop: Int): Set<Int> =
-        index.departures(stop, 0, (0 until index.serviceCount).toSet(), limit = Int.MAX_VALUE)
+        index.departures(stop, 0, index.allServiceIdxs(), limit = Int.MAX_VALUE)
             .map { index.tripRoute(it.tripIdx) }
+            .toSet()
+
+    /** The union of routes serving the saved stops — every alert-filtering
+     *  surface goes through here, so unresolvable codes drop identically. */
+    fun routesServingSaved(index: ScheduleIndex, savedCodes: List<Int>): Set<Int> =
+        savedCodes.mapNotNull { index.resolveStop(it) }
+            .flatMap { routesServing(index, it) }
             .toSet()
 }
 
@@ -116,9 +150,36 @@ object AlertMatch {
 
     /** Home's badge source. No saved stops = zero matches — an empty route
      *  union must never fall into the null show-everything sentinel. */
-    fun forSavedStops(alerts: RtAlerts, index: ScheduleIndex, savedStopIdxs: List<Int>): List<Matched> =
-        if (savedStopIdxs.isEmpty()) emptyList()
-        else forRoutes(alerts, index, savedStopIdxs.flatMap { StopRoutes.routesServing(index, it) }.toSet())
+    fun forSavedStops(alerts: RtAlerts, index: ScheduleIndex, savedCodes: List<Int>): List<Matched> =
+        if (savedCodes.isEmpty()) emptyList()
+        else forRoutes(alerts, index, StopRoutes.routesServingSaved(index, savedCodes))
+
+    /** Home's alerts row (doc 02 §3.1). */
+    fun badgeLabel(count: Int): String = when {
+        count == 1 -> "Alerts (1 affects your stops)"
+        count > 1 -> "Alerts ($count affect your stops)"
+        else -> "Alerts"
+    }
+
+    /** The departures banner (doc 02 §3.2); null = no banner. */
+    fun bannerLabel(count: Int): String? =
+        if (count < 1) null else "${RowFormat.counted(count, "alert")} affect${if (count == 1) "s" else ""} this stop →"
+
+    data class FilterState(val filter: Set<Int>?, val label: String)
+
+    /**
+     * The alert list's filter and its label, decided together so they can
+     * never disagree (the Phase 3 finding-1 lesson). stopRoutes non-null =
+     * opened from a departures banner; savedRoutes empty = nothing saved,
+     * which shows all but must SAY so, never "your stops".
+     */
+    fun filterState(stopRoutes: Set<Int>?, showAll: Boolean, savedRoutes: Set<Int>?): FilterState = when {
+        stopRoutes != null && showAll -> FilterState(null, "Showing all alerts — tap for this stop")
+        stopRoutes != null -> FilterState(stopRoutes, "Showing this stop — tap for all")
+        showAll -> FilterState(null, "Showing all alerts — tap for your stops")
+        savedRoutes.isNullOrEmpty() -> FilterState(null, "No saved stops — showing all")
+        else -> FilterState(savedRoutes, "Showing your stops — tap for all")
+    }
 
     /** null routeFilter = all alerts; otherwise only those naming a filtered route. */
     fun forRoutes(alerts: RtAlerts, index: ScheduleIndex, routeFilter: Set<Int>?): List<Matched> =

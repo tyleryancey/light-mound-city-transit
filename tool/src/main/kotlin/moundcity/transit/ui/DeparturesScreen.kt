@@ -7,7 +7,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewModelScope
 import com.thelightphone.sdk.LightScreen
-import com.thelightphone.sdk.LightViewModel
 import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.SimpleLightScreen
 import java.time.Instant
@@ -22,14 +21,14 @@ import moundcity.transit.core.query.RouteLabels
 import moundcity.transit.core.query.RowFormat
 import moundcity.transit.core.query.RowStatus
 import moundcity.transit.core.query.StopRoutes
+import moundcity.transit.data.Prefs
 
-class DeparturesViewModel(private val stop: Int) : LightViewModel<Unit>() {
+class DeparturesViewModel(private val stop: Int) : ReloadingViewModel() {
 
     data class Row(val marker: String, val text: String, val headsign: String, val struck: Boolean, val board: BoardRow)
 
     val rows = MutableStateFlow<List<Row>>(emptyList())
     val alertBanner = MutableStateFlow<String?>(null)
-    val alertRoutes = MutableStateFlow<IntArray?>(null)
     val expired = MutableStateFlow(false)
     val saved = MutableStateFlow(false)
     val saveNotice = MutableStateFlow<String?>(null)
@@ -39,11 +38,11 @@ class DeparturesViewModel(private val stop: Int) : LightViewModel<Unit>() {
         reload()
     }
 
-    fun reload() {
+    override fun reload() {
         viewModelScope.launch(Dispatchers.IO) {
             val index = AppGraph.index
             val now = Instant.now()
-            expired.value = DataAge.state(index, now.atZone(CHICAGO).toLocalDate()) == DataAge.State.EXPIRED
+            expired.value = DataAge.isExpired(index, now, CHICAGO)
             if (expired.value) { rows.value = emptyList(); return@launch }
             val live = AppGraph.liveSnapshot(now.epochSecond)
             val board = DepartureBoard.at(
@@ -69,22 +68,9 @@ class DeparturesViewModel(private val stop: Int) : LightViewModel<Unit>() {
             }
             val snapshot = AppGraph.snapshot
             alertBanner.value = snapshot?.let {
-                val routes = StopRoutes.routesServing(index, stop)
-                alertRoutes.value = routes.toIntArray()
-                when (val n = AlertMatch.forRoutes(it.alerts, index, routes).size) {
-                    0 -> null
-                    1 -> "1 alert affects this stop →"
-                    else -> "$n alerts affect this stop →"
-                }
+                AlertMatch.bannerLabel(AlertMatch.forRoutes(it.alerts, index, StopRoutes.routesServing(index, stop)).size)
             }
             saved.value = AppGraph.prefs?.savedStops()?.contains(index.stopCode(stop)) == true
-        }
-    }
-
-    fun refresh() {
-        viewModelScope.launch(Dispatchers.IO) {
-            AppGraph.refresh(Instant.now().epochSecond)
-            reload()
         }
     }
 
@@ -99,7 +85,7 @@ class DeparturesViewModel(private val stop: Int) : LightViewModel<Unit>() {
                 saveNotice.value = null
             } else {
                 // The cap refusing silently was review finding 8.
-                saveNotice.value = "Saved stops are full (${moundcity.transit.data.Prefs.MAX_SAVED_STOPS})"
+                saveNotice.value = "Saved stops are full (${Prefs.MAX_SAVED_STOPS})"
             }
             saved.value = prefs.savedStops().contains(code)
         }
@@ -122,7 +108,7 @@ class DeparturesScreen(sealedActivity: SealedLightActivity, private val stop: In
         val saveNotice by viewModel.saveNotice.collectAsState()
         val index = AppGraph.index
         MctPage(
-            title = "${index.stopCode(stop)} ${index.stopName(stop)}",
+            title = stopLabel(index, stop),
             onBack = { goBack() },
         ) {
             LazyColumn {
@@ -133,15 +119,21 @@ class DeparturesScreen(sealedActivity: SealedLightActivity, private val stop: In
                         onTap = { viewModel.toggleSaved() },
                     )
                 }
+                // Doc 02 §3.6: the per-stop wheelchair flag, straight from the feed.
+                RowFormat.wheelchairText(index.wheelchair(stop))?.let { line ->
+                    item { MctRow(primary = line) }
+                }
                 if (banner != null) {
                     item {
                         // The banner counts this stop's routes — the list it opens filters the same way (finding 2).
-                        MctRow(primary = banner!!, onTap = { navigateTo({ sa -> AlertsScreen(sa, viewModel.alertRoutes.value) }) })
+                        MctRow(primary = banner!!, onTap = {
+                            navigateTo({ sa -> AlertsScreen(sa, StopRoutes.routesServing(index, stop).toIntArray()) })
+                        })
                     }
                 }
                 if (expired) {
                     // D9: expiry REPLACES the list — a greyed-out time is still a time
-                    item { MctRow(primary = "This schedule has expired.", secondary = "Refresh the app's data or reinstall to get current times.") }
+                    item { ExpiredNotice() }
                 } else {
                     items(rows) { r ->
                         MctRow(

@@ -28,8 +28,7 @@ class IndexStore(
             .sortedByDescending { it.name }
 
     /** Newest by name among index-*.bin files that actually parse; null if none. */
-    fun newestValidName(): String? =
-        candidates().firstOrNull { runCatching { ScheduleIndex(readFile(it)) }.isSuccess }?.name
+    fun newestValidName(): String? = load().name
 
     /** One read and one parse per candidate, newest first (review finding, Phase 2). */
     fun load(): Loaded {
