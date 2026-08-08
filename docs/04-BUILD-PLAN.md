@@ -497,7 +497,12 @@ where the harness reaches; **zero index-format changes**, so no Python lockstep 
       direction line read "to TO CENTRAL WEST END TC" because Metro's headsigns
       already begin "TO" — the headsign now renders verbatim after the bearing.
       Re-verified: clean clip, correct line, scale bar and legend present, and the
-      TripDetail → viewer link works.*
+      TripDetail → viewer link works. Also driven on device: a canvas glyph tap
+      opened stop 9037 (a real route-10 stop) through the viewport transform; the
+      direction toggle flipped "northbound · TO CENTRAL WEST END TC" to
+      "southbound · TO HAMPTON GRAVOIS TC"; and with a live snapshot in hand
+      (footer "Live 43s ago") the 23:59 and 00:40 rows read **"scheduled · not
+      started yet"** — the question that prompted D13.6, answered on the screen.*
 
 **Known behavior, accepted:** the canvas consumes drags (that is what pans it), so
 the page scrolls from the rows above and below it rather than from the map itself.
