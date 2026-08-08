@@ -96,4 +96,27 @@ class ViewerInteractionTest {
             "MetroLink Blue runs east-west; the two directions must disagree",
         )
     }
+
+    // --- ScaleBar (D13.3) ---
+
+    @Test
+    fun projectionKnowsItsScale() {
+        // 0.02° of latitude fitted into 1000px with 100px padding → 800px.
+        // 0.02° ≈ 2226.4 m → ~2.783 m per fitted pixel.
+        val shape = intArrayOf(38_000_000, -90_000_000, 38_020_000, -90_000_000)
+        val p = ShapeProjection.fit(shape, width = 1000f, height = 1000f, pad = 100f)
+        assertTrue(Math.abs(p.metersPerPixel - 2.783) < 0.01, "meters per fitted pixel; got ${p.metersPerPixel}")
+    }
+
+    @Test
+    fun scaleBarPicksTheLargestNiceMileThatFits() {
+        // At 2.783 m/px: 1 mi ≈ 578 px, 2 mi ≈ 1157 px.
+        val bar = ScaleBar.pick(metersPerPixel = 2.783, maxWidthPx = 600f)!!
+        assertEquals("1 mi", bar.label, "2 mi would not fit in 600px")
+        assertTrue(Math.abs(bar.widthPx - 578.3f) < 1f, "bar width in px; got ${bar.widthPx}")
+        assertEquals("¼ mi", ScaleBar.pick(2.783, 200f)!!.label, "a small budget steps down the ladder")
+        assertNull(ScaleBar.pick(2.783, 10f), "nothing fits — draw no bar rather than a wrong one")
+        // Zoom divides meters-per-pixel: at 4× the same canvas spans ¼ the ground.
+        assertEquals("¼ mi", ScaleBar.pick(2.783 / 4.0, 600f)!!.label, "the zoomed-in bar shrinks honestly")
+    }
 }

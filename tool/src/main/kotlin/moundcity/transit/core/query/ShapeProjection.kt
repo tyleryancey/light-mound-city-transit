@@ -47,6 +47,10 @@ class ShapeProjection private constructor(
 
     val pointCount: Int get() = points.size / 2
 
+    /** Ground meters represented by one fitted pixel (latitude metric — the
+     *  cos correction is already inside the longitude term). D13 scale bar. */
+    val metersPerPixel: Double get() = 111_320.0 / 1_000_000.0 / scale
+
     fun x(i: Int): Float = project(points[i * 2], points[i * 2 + 1]).first
     fun y(i: Int): Float = project(points[i * 2], points[i * 2 + 1]).second
 
