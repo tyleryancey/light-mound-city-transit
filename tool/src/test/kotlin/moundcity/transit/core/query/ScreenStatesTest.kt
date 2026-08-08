@@ -85,6 +85,16 @@ class ScreenStatesTest {
             "doc 02 §3.2 exact",
         )
         assertEquals("canceled", RowFormat.statusText(RowStatus.Canceled, nowEpoch = 0, headerTs = 0), "shown struck, never removed")
+        assertEquals(
+            "scheduled · not started yet",
+            RowFormat.statusText(RowStatus.ScheduledNotStarted, nowEpoch = 0, headerTs = 0),
+            "live data exists; this trip simply has not left its first stop (D13)",
+        )
+        assertEquals(
+            "scheduled · no live data",
+            RowFormat.statusText(RowStatus.ScheduledNoData, nowEpoch = 0, headerTs = 0),
+            "should be running, feed silent — the measured ~9% of in-service buses",
+        )
     }
 
     @Test
@@ -183,6 +193,12 @@ class ScreenStatesTest {
         val mine = AlertMatch.forRoutes(alerts, index, routes)
         assertTrue(mine.size < all.size, "saved-stop filtering narrows; got ${mine.size}")
         assertTrue(all.all { it.header.isNotEmpty() }, "header text always says what happened")
+        assertTrue(mine.all { it.routeIdxs.isNotEmpty() }, "a matched alert carries the routes it matched on (D13 linking)")
+        assertEquals(
+            mine[0].routeLabels,
+            mine[0].routeIdxs.map { RouteLabels.displayShortName(index, it) }.distinct(),
+            "the labels are exactly those carried indexes' display names",
+        )
     }
 
     @Test

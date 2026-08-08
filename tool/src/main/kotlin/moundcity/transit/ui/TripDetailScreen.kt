@@ -74,6 +74,12 @@ class TripDetailScreen(
         MctPage(title = RowFormat.timeText(minute), onBack = { goBack() }) {
             LazyColumn {
                 items(header) { line -> MctRow(primary = line) }
+                item {
+                    MctRow(
+                        primary = "View route →",
+                        onTap = { navigateTo({ sa -> RouteScreen(sa, AppGraph.index.tripRoute(tripIdx)) }) },
+                    )
+                }
                 item { MctRow(primary = "— remaining stops —") }
                 items(stops) { (text, terminus) ->
                     MctRow(primary = if (terminus) "$text · terminus" else text)

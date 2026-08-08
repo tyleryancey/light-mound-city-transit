@@ -14,6 +14,14 @@ sealed interface RowStatus {
     data class Live(val delaySeconds: Int) : RowStatus
     data object Scheduled : RowStatus
     data object Canceled : RowStatus
+
+    /** D13, only when a live snapshot exists: the trip has not left its first
+     *  stop yet, so the feed's silence about it means nothing is wrong. */
+    data object ScheduledNotStarted : RowStatus
+
+    /** D13, only when a live snapshot exists: the trip should be under way
+     *  and the feed says nothing — the measured ~9% of in-service buses. */
+    data object ScheduledNoData : RowStatus
 }
 
 data class BoardRow(
@@ -59,13 +67,21 @@ object DepartureBoard {
             // starts 01:00 local, so 00:00–01:00 queries precede it. Clamp to
             // zero — every one of that day's trips is still ahead — rather than
             // skipping the day (review finding, Phase 1d).
-            val fromMinute = ((elapsedSeconds + 59) / 60).toInt().coerceAtLeast(0)
+            val nowMinute = ((elapsedSeconds + 59) / 60).toInt()
+            val fromMinute = nowMinute.coerceAtLeast(0)
             val services = index.activeServiceIdxs(date)
             for (d in index.departures(stop, fromMinute, services, limit)) {
                 val tripId = index.tripId(d.tripIdx)
+                val route = index.tripRoute(d.tripIdx)
                 val status = when {
                     tripId in canceled -> RowStatus.Canceled
                     tripId in delays -> RowStatus.Live(delays[tripId] ?: 0)
+                    // With live data in hand, "scheduled" alone is ambiguous —
+                    // say which kind (D13). Rail has no realtime at all, so a
+                    // train row stays plainly scheduled (D2).
+                    rt != null && !RouteLabels.isRail(index, route) ->
+                        if (index.tripFirstMinute(d.tripIdx) > nowMinute) RowStatus.ScheduledNotStarted
+                        else RowStatus.ScheduledNoData
                     else -> RowStatus.Scheduled
                 }
                 rows.add(
